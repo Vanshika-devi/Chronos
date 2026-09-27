@@ -1,0 +1,34 @@
+package com.chronos.service;
+
+import com.chronos.dto.CreateJobRequest;
+import com.chronos.repository.JobRepository;
+import com.chronos.model.Job;
+import org.springframework.stereotype.Service;
+import com.chronos.exception.JobNotFoundException;
+
+import java.util.List;
+
+@Service
+public class JobService{
+    private final JobRepository jobRepository;
+    public JobService(JobRepository jobRepository){
+        this.jobRepository=jobRepository;
+    }
+    public Job createJob(CreateJobRequest request){
+        Job job=new Job(
+                null,
+                request.getName(),
+                request.getPriority(),
+                "CREATED"
+        );
+        return jobRepository.save(job);
+    }
+    public List<Job> getAllJobs(){
+        return jobRepository.findAll();
+    }
+    public Job getJobById(Long id){
+        return jobRepository.findById(id)
+                .orElseThrow(()->new JobNotFoundException("Job not found "+id)
+                );
+    }
+}

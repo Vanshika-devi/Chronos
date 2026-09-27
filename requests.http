@@ -1,0 +1,13 @@
+GET http://localhost:8080/api/jobs
+
+###
+
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Generate Content",
+  "priority": 4
+}
+
+
