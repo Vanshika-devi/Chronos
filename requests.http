@@ -10,4 +10,23 @@ Content-Type: application/json
   "priority": 4
 }
 
+###
+PUT http://localhost:8080/api/jobs/1
+Content-Type: application/json
 
+{
+    "name": "Generate Monthly Report",
+    "priority": 10,
+    "status": "CREATED"
+}
+
+###
+PATCH http://localhost:8080/api/jobs/1/status
+Content-Type: application/json
+
+{
+    "status": "RUNNING"
+}
+
+###
+DELETE http://localhost:8080/api/jobs/1

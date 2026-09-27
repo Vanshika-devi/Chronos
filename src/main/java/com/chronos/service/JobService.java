@@ -44,4 +44,23 @@ public class JobService{
         job.setStatus(request.getStatus());
         return jobRepository.save(job);
     }
+    public Job updateJobStatus(Long id,String status){
+        Job job=jobRepository.findById(id)
+                .orElseThrow(()->
+                        new JobNotFoundException(
+                                "Job not found "+ id
+                        ));
+        job.setStatus(status);
+        return jobRepository.save(job);
+    }
+
+    public void deleteJob(Long id){
+
+        if(!jobRepository.existsById(id)){
+            throw new JobNotFoundException(
+                    "Job not found "+ id
+            );
+        }
+        jobRepository.deleteById(id);
+    }
 }
