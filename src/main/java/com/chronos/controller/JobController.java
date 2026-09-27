@@ -1,6 +1,7 @@
 package com.chronos.controller;
 
 import com.chronos.dto.CreateJobRequest;
+import com.chronos.dto.UpdateJobRequest;
 import com.chronos.model.Job;
 import com.chronos.service.JobService;
 
@@ -36,6 +37,12 @@ public class JobController{
     public ResponseEntity<Job> getJob(@PathVariable Long id){
         return ResponseEntity.ok(
                 jobService.getJobById(id)
+        );
+    }
+    @PutMapping("{id}")
+    public ResponseEntity<Job> updateJob(@PathVariable Long id,@Valid @RequestBody UpdateJobRequest request){
+        return ResponseEntity.ok(
+                jobService.updateJob(id,request)
         );
     }
 }

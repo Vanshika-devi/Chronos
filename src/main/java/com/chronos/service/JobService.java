@@ -1,6 +1,7 @@
 package com.chronos.service;
 
 import com.chronos.dto.CreateJobRequest;
+import com.chronos.dto.UpdateJobRequest;
 import com.chronos.repository.JobRepository;
 import com.chronos.model.Job;
 import org.springframework.stereotype.Service;
@@ -30,5 +31,17 @@ public class JobService{
         return jobRepository.findById(id)
                 .orElseThrow(()->new JobNotFoundException("Job not found "+id)
                 );
+    }
+    public Job updateJob(Long id, UpdateJobRequest request){
+        Job job=jobRepository.findById(id)
+                .orElseThrow(()->
+                        new JobNotFoundException(
+                                "Job "+ id
+                        )
+                );
+        job.setName(request.getName());
+        job.setPriority(request.getPriority());
+        job.setStatus(request.getStatus());
+        return jobRepository.save(job);
     }
 }
