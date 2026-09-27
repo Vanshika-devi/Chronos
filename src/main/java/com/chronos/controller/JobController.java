@@ -2,6 +2,7 @@ package com.chronos.controller;
 
 import com.chronos.dto.CreateJobRequest;
 import com.chronos.dto.UpdateJobRequest;
+import com.chronos.dto.UpdateJobStatusRequest;
 import com.chronos.model.Job;
 import com.chronos.service.JobService;
 
@@ -39,10 +40,26 @@ public class JobController{
                 jobService.getJobById(id)
         );
     }
-    @PutMapping("{id}")
+
+    @PutMapping("/{id}")
     public ResponseEntity<Job> updateJob(@PathVariable Long id,@Valid @RequestBody UpdateJobRequest request){
         return ResponseEntity.ok(
                 jobService.updateJob(id,request)
         );
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Job> updateJobStatus(@PathVariable Long id, @Valid @RequestBody UpdateJobStatusRequest request){
+        return ResponseEntity.ok(
+                jobService.updateJobStatus(
+                        id,
+                        request.getStatus()
+                )
+        );
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteJob(@PathVariable Long id){
+        jobService.deleteJob(id);
+        return ResponseEntity.noContent().build();
     }
 }
