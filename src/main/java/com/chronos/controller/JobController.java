@@ -3,7 +3,10 @@ package com.chronos.controller;
 import com.chronos.dto.CreateJobRequest;
 import com.chronos.dto.UpdateJobRequest;
 import com.chronos.dto.UpdateJobStatusRequest;
+import com.chronos.model.Execution;
 import com.chronos.model.Job;
+import com.chronos.service.ExecutionService;
+import com.chronos.service.JobExecutionService;
 import com.chronos.service.JobService;
 
 import jakarta.validation.Valid;
@@ -19,8 +22,13 @@ import java.util.List;
 @RequestMapping("/api/jobs")
 public class JobController{
     private final JobService jobService;
-    public JobController(JobService jobService){
+    private final JobExecutionService jobExecutionService;
+    private final ExecutionService executionService;
+
+    public JobController(JobService jobService, JobExecutionService jobExecutionService, ExecutionService executionService){
         this.jobService=jobService;
+        this.jobExecutionService = jobExecutionService;
+        this.executionService = executionService;
     }
 
     @PostMapping
@@ -61,5 +69,18 @@ public class JobController{
     public ResponseEntity<Void> deleteJob(@PathVariable Long id){
         jobService.deleteJob(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/run")
+    public ResponseEntity<Execution> runJob(@PathVariable Long id){
+        return ResponseEntity.ok(
+                jobExecutionService.runJob(id)
+        );
+    }
+    @GetMapping("/{id}/executions")
+    public ResponseEntity<List<Execution>> getExecutions(@PathVariable Long id){
+        return ResponseEntity.ok(
+                executionService.getExecutionsForJob(id)
+        );
     }
 }

@@ -30,3 +30,19 @@ Content-Type: application/json
 
 ###
 DELETE http://localhost:8080/api/jobs/1
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+    "name": "Generate Report",
+    "priority": 5
+}
+
+###
+POST http://localhost:8080/api/jobs/2/run
+
+
+###
+GET http://localhost:8080/api/jobs/4/executions

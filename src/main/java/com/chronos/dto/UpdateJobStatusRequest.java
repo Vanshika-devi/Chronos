@@ -1,17 +1,18 @@
 package com.chronos.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import com.chronos.model.JobStatus;
+import jakarta.validation.constraints.NotNull;
 
 public class UpdateJobStatusRequest{
-    @NotBlank
-    private String status;
+    @NotNull
+    private JobStatus status;
     public UpdateJobStatusRequest(){
 
     }
-    public String getStatus(){
+    public JobStatus getStatus(){
         return status;
     }
-    public void setStatus(String status){
+    public void setStatus(JobStatus status){
         this.status=status;
     }
 }

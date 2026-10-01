@@ -11,11 +11,13 @@ public class Job{
     private Long id;
     private String name;
     private int priority;
-    private String status;
+
+    @Enumerated(EnumType.STRING)
+    private JobStatus status;
     public Job(){
 
     }
-    public Job(Long id,String name,int priority,String status){
+    public Job(Long id,String name,int priority,JobStatus status){
         this.id=id;
         this.name=name;
         this.priority=priority;
@@ -39,10 +41,10 @@ public class Job{
     public void setPriority(int priority){
         this.priority=priority;
     }
-    public String getStatus(){
+    public JobStatus getStatus(){
         return status;
     }
-    public void setStatus(String status){
+    public void setStatus(JobStatus status){
         this.status=status;
     }
 }
