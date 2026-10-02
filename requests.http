@@ -46,3 +46,73 @@ POST http://localhost:8080/api/jobs/2/run
 
 ###
 GET http://localhost:8080/api/jobs/4/executions
+
+###
+
+POST http://localhost:8080/api/jobs/3/run
+
+###
+GET http://localhost:8080/api/jobs/3/executions
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Job-1",
+  "priority": 5
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Job-2",
+  "priority": 4
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Job-3",
+  "priority": 3
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Job-4",
+  "priority": 2
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Job-5",
+  "priority": 1
+}
+
+###
+GET http://localhost:8080/api/jobs
+
+###
+POST http://localhost:8080/api/jobs/1/run
+
+###
+POST http://localhost:8080/api/jobs/2/run
+
+###
+POST http://localhost:8080/api/jobs/3/run
+
+###
+POST http://localhost:8080/api/jobs/4/run
+
+###
+POST http://localhost:8080/api/jobs/5/run
