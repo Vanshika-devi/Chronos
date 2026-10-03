@@ -1,25 +1,20 @@
 package com.chronos.worker;
 
-import com.chronos.model.Execution;
-import com.chronos.model.ExecutionStatus;
-import com.chronos.model.Job;
 import com.chronos.service.ExecutionService;
-
-import java.time.LocalDateTime;
 
 public class JobTask implements Runnable {
 
-    private final Job job;
-    private final Execution execution;
+    private final Long jobId;
+    private final Long executionId;
     private final ExecutionService executionService;
 
     public JobTask(
-            Job job,
-            Execution execution,
+            Long jobId,
+            Long executionId,
             ExecutionService executionService) {
 
-        this.job = job;
-        this.execution = execution;
+        this.jobId = jobId;
+        this.executionId = executionId;
         this.executionService = executionService;
     }
 
@@ -32,23 +27,28 @@ public class JobTask implements Runnable {
         System.out.println(
                 "Worker " + threadName
                         + " started Job "
-                        + job.getId()
+                        + jobId
         );
 
         try {
 
-            // Temporary simulation of job work
+            executionService.markRunning(
+                    jobId,
+                    executionId
+            );
+
+            // Temporary simulation
             Thread.sleep(2000);
 
             executionService.markCompleted(
-                    execution,
-                    job
+                    jobId,
+                    executionId
             );
 
             System.out.println(
                     "Worker " + threadName
                             + " completed Job "
-                            + job.getId()
+                            + jobId
             );
 
         } catch (InterruptedException e) {
@@ -56,14 +56,14 @@ public class JobTask implements Runnable {
             Thread.currentThread().interrupt();
 
             executionService.markFailed(
-                    execution,
-                    job
+                    jobId,
+                    executionId
             );
 
             System.out.println(
                     "Worker " + threadName
                             + " interrupted Job "
-                            + job.getId()
+                            + jobId
             );
         }
     }

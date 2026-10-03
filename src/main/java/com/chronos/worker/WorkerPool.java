@@ -1,7 +1,5 @@
 package com.chronos.worker;
 
-import com.chronos.model.Execution;
-import com.chronos.model.Job;
 import com.chronos.service.ExecutionService;
 import org.springframework.stereotype.Component;
 
@@ -23,13 +21,13 @@ public class WorkerPool {
     }
 
     public void submit(
-            Job job,
-            Execution execution) {
+            Long jobId,
+            Long executionId) {
 
         JobTask task =
                 new JobTask(
-                        job,
-                        execution,
+                        jobId,
+                        executionId,
                         executionService
                 );
 
@@ -37,6 +35,7 @@ public class WorkerPool {
     }
 
     public void shutdown() {
+
         executorService.shutdown();
     }
 }

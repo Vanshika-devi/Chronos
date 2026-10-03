@@ -1,80 +1,85 @@
 package com.chronos.scheduler;
 
-import com.chronos.model.Job;
-import com.chronos.worker.WorkerPool;
+import com.chronos.service.JobExecutionService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Component
 public class SchedulerService {
 
     private final JobQueue jobQueue;
-    private final WorkerPool workerPool;
+    private final JobExecutionService jobExecutionService;
 
-    private final ExecutorService schedulerExecutor;
+    private Thread schedulerThread;
+
+    private volatile boolean running = true;
 
     public SchedulerService(
             JobQueue jobQueue,
-            WorkerPool workerPool) {
+            JobExecutionService jobExecutionService) {
 
         this.jobQueue = jobQueue;
-        this.workerPool = workerPool;
-
-        this.schedulerExecutor =
-                Executors.newSingleThreadExecutor();
+        this.jobExecutionService = jobExecutionService;
     }
 
     @PostConstruct
     public void start() {
 
-        schedulerExecutor.submit(
-                this::schedulerLoop
+        schedulerThread = new Thread(
+                this::schedulerLoop,
+                "chronos-scheduler"
+        );
+
+        schedulerThread.start();
+
+        System.out.println(
+                "Chronos Scheduler started."
         );
     }
 
     private void schedulerLoop() {
 
-        while (!Thread.currentThread().isInterrupted()) {
+        while (running) {
 
-            Job job = jobQueue.poll();
+            try {
 
-            if (job == null) {
+                ScheduledJob scheduledJob =
+                        jobQueue.take();
 
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
+                System.out.println(
+                        "Scheduler picked Job "
+                                + scheduledJob.getJobId()
+                                + " with priority "
+                                + scheduledJob.getPriority()
+                );
 
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+                jobExecutionService.dispatchJob(
+                        scheduledJob.getJobId(),
+                        scheduledJob.getExecutionId()
+                );
 
-                continue;
+            } catch (InterruptedException e) {
+
+                Thread.currentThread().interrupt();
+
+                break;
             }
-
-            workerPool.submit(
-                    job,
-                    null
-            );
         }
-    }
-
-    public void schedule(Job job) {
-
-        jobQueue.add(job);
 
         System.out.println(
-                "Job " + job.getId()
-                        + " added to scheduler queue"
+                "Chronos Scheduler stopped."
         );
     }
 
     @PreDestroy
-    public void shutdown() {
+    public void stop() {
 
-        schedulerExecutor.shutdownNow();
+        running = false;
+
+        if (schedulerThread != null) {
+
+            schedulerThread.interrupt();
+        }
     }
 }

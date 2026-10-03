@@ -74,7 +74,7 @@ public class JobController{
     @PostMapping("/{id}/run")
     public ResponseEntity<Execution> runJob(@PathVariable Long id){
         return ResponseEntity.ok(
-                jobExecutionService.runJob(id)
+                jobExecutionService.queueJob(id)
         );
     }
     @GetMapping("/{id}/executions")

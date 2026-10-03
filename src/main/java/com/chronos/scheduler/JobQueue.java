@@ -1,39 +1,45 @@
 package com.chronos.scheduler;
 
-import com.chronos.model.Job;
 import org.springframework.stereotype.Component;
 
-import java.util.PriorityQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 @Component
 public class JobQueue {
 
-    private final PriorityQueue<Job> queue;
+    private final PriorityBlockingQueue<ScheduledJob> queue;
 
     public JobQueue() {
 
-        this.queue = new PriorityQueue<>(
-                new JobPriorityComparator()
+        this.queue = new PriorityBlockingQueue<>(
+                11,
+                new ScheduledJobComparator()
         );
     }
 
-    public void add(Job job) {
-        queue.offer(job);
+    public void add(ScheduledJob scheduledJob) {
+
+        queue.put(scheduledJob);
     }
 
-    public Job poll() {
-        return queue.poll();
+    public ScheduledJob take()
+            throws InterruptedException {
+
+        return queue.take();
     }
 
-    public Job peek() {
+    public ScheduledJob peek() {
+
         return queue.peek();
     }
 
     public boolean isEmpty() {
+
         return queue.isEmpty();
     }
 
     public int size() {
+
         return queue.size();
     }
 }

@@ -1,61 +1,55 @@
 package com.chronos.scheduler;
 
-import com.chronos.model.Job;
-import com.chronos.model.JobStatus;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class JobQueueTest {
 
     @Test
-    void shouldReturnJobsInPriorityOrder() {
+    void higherPriorityJobShouldBeReturnedFirst()
+            throws InterruptedException {
 
-        // Create jobs
-        Job jobA = new Job(
-                null,
-                "Job-A",
-                2,
-                JobStatus.CREATED
-        );
-
-        Job jobB = new Job(
-                null,
-                "Job-B",
-                10,
-                JobStatus.CREATED
-        );
-
-        Job jobC = new Job(
-                null,
-                "Job-C",
-                5,
-                JobStatus.CREATED
-        );
-
-        Job jobD = new Job(
-                null,
-                "Job-D",
-                1,
-                JobStatus.CREATED
-        );
-
-        // Create queue
         JobQueue queue = new JobQueue();
 
-        // Add jobs
-        queue.add(jobA);
-        queue.add(jobB);
-        queue.add(jobC);
-        queue.add(jobD);
+        ScheduledJob job1 =
+                new ScheduledJob(
+                        1L,
+                        101L,
+                        2
+                );
 
-        // Highest priority should come first
-        assertEquals("Job-B", queue.poll().getName());
-        assertEquals("Job-C", queue.poll().getName());
-        assertEquals("Job-A", queue.poll().getName());
-        assertEquals("Job-D", queue.poll().getName());
+        ScheduledJob job2 =
+                new ScheduledJob(
+                        2L,
+                        102L,
+                        10
+                );
 
-        // Queue should now be empty
-        assertTrue(queue.isEmpty());
+        ScheduledJob job3 =
+                new ScheduledJob(
+                        3L,
+                        103L,
+                        5
+                );
+
+        queue.add(job1);
+        queue.add(job2);
+        queue.add(job3);
+
+        assertEquals(
+                2L,
+                queue.take().getJobId()
+        );
+
+        assertEquals(
+                3L,
+                queue.take().getJobId()
+        );
+
+        assertEquals(
+                1L,
+                queue.take().getJobId()
+        );
     }
 }
