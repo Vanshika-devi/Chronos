@@ -1,6 +1,7 @@
+package com.chronos.scheduler;
+
 import com.chronos.model.Job;
 import com.chronos.model.JobStatus;
-import com.chronos.scheduler.JobQueue;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
