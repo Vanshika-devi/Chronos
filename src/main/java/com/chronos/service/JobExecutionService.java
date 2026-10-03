@@ -12,8 +12,8 @@ import com.chronos.scheduler.ScheduledJob;
 import com.chronos.worker.WorkerPool;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class JobExecutionService {
@@ -65,12 +65,30 @@ public class JobExecutionService {
                         job.getPriority()
                 );
 
-        jobQueue.add(scheduledJob);
+        /*
+         * IMPORTANT:
+         *
+         * Do not put the job into the scheduler queue
+         * until the database transaction commits.
+         */
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
 
-        System.out.println(
-                "Job " + job.getId()
-                        + " added to scheduler queue."
-        );
+                            @Override
+                            public void afterCommit() {
+
+                                jobQueue.add(scheduledJob);
+
+                                System.out.println(
+                                        "Job "
+                                                + job.getId()
+                                                + " added to scheduler queue "
+                                                + "after transaction commit."
+                                );
+                            }
+                        }
+                );
 
         return savedExecution;
     }
@@ -79,25 +97,24 @@ public class JobExecutionService {
             Long jobId,
             Long executionId) {
 
-        Job job = jobRepository.findById(jobId)
+        jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
                                 "Job not found: " + jobId
                         )
                 );
 
-        Execution execution =
-                executionRepository.findById(executionId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Execution not found: "
-                                                + executionId
-                                )
-                        );
+        executionRepository.findById(executionId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Execution not found: "
+                                        + executionId
+                        )
+                );
 
         workerPool.submit(
-                job.getId(),
-                execution.getId()
+                jobId,
+                executionId
         );
     }
 }

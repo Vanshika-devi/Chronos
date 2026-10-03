@@ -1,6 +1,7 @@
 package com.chronos.scheduler;
 
 import com.chronos.service.JobExecutionService;
+import com.chronos.worker.WorkerPool;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ public class SchedulerService {
 
     private final JobQueue jobQueue;
     private final JobExecutionService jobExecutionService;
+    private final WorkerPool workerPool;
 
     private Thread schedulerThread;
 
@@ -17,10 +19,12 @@ public class SchedulerService {
 
     public SchedulerService(
             JobQueue jobQueue,
-            JobExecutionService jobExecutionService) {
+            JobExecutionService jobExecutionService,
+            WorkerPool workerPool) {
 
         this.jobQueue = jobQueue;
         this.jobExecutionService = jobExecutionService;
+        this.workerPool = workerPool;
     }
 
     @PostConstruct
@@ -64,6 +68,15 @@ public class SchedulerService {
                 Thread.currentThread().interrupt();
 
                 break;
+
+            } catch (Exception e) {
+
+                System.err.println(
+                        "Scheduler failed to dispatch job: "
+                                + e.getMessage()
+                );
+
+                e.printStackTrace();
             }
         }
 
@@ -75,11 +88,30 @@ public class SchedulerService {
     @PreDestroy
     public void stop() {
 
+        System.out.println(
+                "Chronos Scheduler shutdown initiated."
+        );
+
         running = false;
 
         if (schedulerThread != null) {
 
             schedulerThread.interrupt();
+
+            try {
+
+                schedulerThread.join(5000);
+
+            } catch (InterruptedException e) {
+
+                Thread.currentThread().interrupt();
+            }
         }
+
+        workerPool.shutdown();
+
+        System.out.println(
+                "Chronos Scheduler shutdown complete."
+        );
     }
 }
