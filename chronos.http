@@ -1,0 +1,140 @@
+### Get all existing jobs
+GET http://localhost:8080/api/jobs
+
+
+### Create Priority 1 Job
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Starvation-Test-P1",
+  "priority": 1
+}
+
+
+### Create Priority 5 Job A
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Starvation-Test-P5-A",
+  "priority": 5
+}
+
+
+### Create Priority 5 Job B
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Starvation-Test-P5-B",
+  "priority": 5
+}
+
+
+### Create Priority 5 Job C
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Starvation-Test-P5-C",
+  "priority": 5
+}
+
+
+### Create Priority 5 Job D
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Starvation-Test-P5-D",
+  "priority": 5
+}
+
+### P1
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "TEST-P1",
+  "priority": 1
+}
+
+
+###P5-A
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "TEST-P5-A",
+  "priority": 5
+}
+
+### Run P1
+POST http://localhost:8080/api/jobs/9/run
+
+### Run P5-A
+POST http://localhost:8080/api/jobs/10/run
+
+### Run P5-B
+POST http://localhost:8080/api/jobs/11/run
+
+### Run P5-C
+POST http://localhost:8080/api/jobs/12/run
+
+### P5-B
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "TEST-P5-B",
+  "priority": 5
+}
+
+
+### P5-C
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "TEST-P5-C",
+  "priority": 5
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Priority-1-Test",
+  "priority": 1
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Priority-5-Test",
+  "priority": 5
+}
+
+###
+POST http://localhost:8080/api/jobs
+Content-Type: application/json
+
+{
+  "name": "Priority-3-Test",
+  "priority": 3
+}
+###
+POST http://localhost:8080/api/jobs/60/run
+
+###
+POST http://localhost:8080/api/jobs/61/run
+
+###
+POST http://localhost:8080/api/jobs/62/run
+
+###
+POST http://localhost:8080/api/jobs/63/run

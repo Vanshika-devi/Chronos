@@ -9,6 +9,7 @@ import com.chronos.repository.ExecutionRepository;
 import com.chronos.repository.JobRepository;
 import com.chronos.scheduler.JobQueue;
 import com.chronos.scheduler.ScheduledJob;
+import com.chronos.scheduler.SequenceGenerator;
 import com.chronos.worker.WorkerPool;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,22 +23,28 @@ public class JobExecutionService {
     private final ExecutionRepository executionRepository;
     private final WorkerPool workerPool;
     private final JobQueue jobQueue;
+    private final SequenceGenerator sequenceGenerator;
 
     public JobExecutionService(
             JobRepository jobRepository,
             ExecutionRepository executionRepository,
             WorkerPool workerPool,
-            JobQueue jobQueue) {
+            JobQueue jobQueue,
+            SequenceGenerator sequenceGenerator) {
 
         this.jobRepository = jobRepository;
         this.executionRepository = executionRepository;
         this.workerPool = workerPool;
         this.jobQueue = jobQueue;
+        this.sequenceGenerator = sequenceGenerator;
     }
 
     @Transactional
     public Execution queueJob(Long jobId) {
 
+        /*
+         * Find the job in the database.
+         */
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
@@ -45,10 +52,16 @@ public class JobExecutionService {
                         )
                 );
 
+        /*
+         * Mark the job as QUEUED.
+         */
         job.setStatus(JobStatus.QUEUED);
 
         jobRepository.save(job);
 
+        /*
+         * Create an execution record.
+         */
         Execution execution = new Execution();
 
         execution.setJobId(job.getId());
@@ -58,18 +71,35 @@ public class JobExecutionService {
         Execution savedExecution =
                 executionRepository.save(execution);
 
+        /*
+         * Generate the ordering number.
+         *
+         * This number is used when two jobs
+         * have the same priority.
+         */
+        long sequenceNumber =
+                sequenceGenerator.next();
+
+        /*
+         * Create the object that will enter
+         * the scheduler queue.
+         */
         ScheduledJob scheduledJob =
                 new ScheduledJob(
                         job.getId(),
                         savedExecution.getId(),
-                        job.getPriority()
+                        job.getPriority(),
+                        sequenceNumber
                 );
 
         /*
          * IMPORTANT:
          *
-         * Do not put the job into the scheduler queue
-         * until the database transaction commits.
+         * Do not put the job into the queue until
+         * the database transaction has committed.
+         *
+         * Otherwise the scheduler could consume the
+         * job before the Execution row exists in the DB.
          */
         TransactionSynchronizationManager
                 .registerSynchronization(
@@ -84,7 +114,11 @@ public class JobExecutionService {
                                         "Job "
                                                 + job.getId()
                                                 + " added to scheduler queue "
-                                                + "after transaction commit."
+                                                + "after transaction commit. "
+                                                + "Priority: "
+                                                + job.getPriority()
+                                                + ", Sequence: "
+                                                + sequenceNumber
                                 );
                             }
                         }
@@ -97,6 +131,9 @@ public class JobExecutionService {
             Long jobId,
             Long executionId) {
 
+        /*
+         * Verify that the job still exists.
+         */
         jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
@@ -104,6 +141,9 @@ public class JobExecutionService {
                         )
                 );
 
+        /*
+         * Verify that the execution still exists.
+         */
         executionRepository.findById(executionId)
                 .orElseThrow(() ->
                         new RuntimeException(
@@ -112,6 +152,9 @@ public class JobExecutionService {
                         )
                 );
 
+        /*
+         * Submit the execution to the worker pool.
+         */
         workerPool.submit(
                 jobId,
                 executionId

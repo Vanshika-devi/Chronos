@@ -4,10 +4,10 @@ import com.chronos.model.Job;
 
 import java.util.Comparator;
 
-public class JobPriorityComparator implements Comparator<Job> {
+public class JobPriorityComparator implements Comparator<ScheduledJob> {
 
     @Override
-    public int compare(Job first, Job second) {
+    public int compare(ScheduledJob first, ScheduledJob second) {
 
         return Integer.compare(
                 second.getPriority(),

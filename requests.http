@@ -119,3 +119,9 @@ POST http://localhost:8080/api/jobs/5/run
 
 ###
 POST  http://localhost:8080/api/jobs/6/run
+
+###
+POST http://localhost:8080/api/jobs/7/run
+
+###
+POST http://localhost:8080/api/jobs/8/run
