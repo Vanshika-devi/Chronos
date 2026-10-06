@@ -74,8 +74,8 @@ public class JobExecutionService {
         /*
          * Generate the ordering number.
          *
-         * This number is used when two jobs
-         * have the same priority.
+         * This is used when two jobs have
+         * the same effective priority.
          */
         long sequenceNumber =
                 sequenceGenerator.next();
