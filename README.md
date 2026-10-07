@@ -1,295 +1,619 @@
-<p align="center">
+<div align="center">
 
-# ⚙️ Chronos — Distributed Job Scheduling Platform
-**A production-grade distributed job scheduling and execution platform built with Java and Spring Boot.**
+# ⚙️ Chronos
 
-Designed to explore **backend engineering, concurrency, distributed systems, database engineering, event-driven architecture, and system design** through one evolving real-world system.
+### Distributed Job Scheduling & Execution Platform
 
-<br/>
+**A backend engineering project exploring reliable scheduling, concurrent execution, fault tolerance, and distributed systems with Java and Spring Boot.**
 
-![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk\&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen?logo=springboot\&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql\&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-Cache%20%26%20Coordination-DC382D?logo=redis\&logoColor=white)
-![Kafka](https://img.shields.io/badge/Apache%20Kafka-Event%20Streaming-231F20?logo=apachekafka\&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker\&logoColor=white)
-![Maven](https://img.shields.io/badge/Maven-Build-C71A36?logo=apachemaven\&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
-
+<p>
+  <img src="https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white" alt="Java 21"/>
+  <img src="https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen?logo=springboot&logoColor=white" alt="Spring Boot"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"/>
+  <img src="https://img.shields.io/badge/Redis-Coordination-DC382D?logo=redis&logoColor=white" alt="Redis"/>
+  <img src="https://img.shields.io/badge/Kafka-Event%20Streaming-231F20?logo=apachekafka&logoColor=white" alt="Kafka"/>
+  <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white" alt="Docker"/>
+  <img src="https://img.shields.io/badge/Maven-Build-C71A36?logo=apachemaven&logoColor=white" alt="Maven"/>
 </p>
 
----
+> **Understand the problem → understand the trade-off → choose the technology → implement it → test it → measure it.**
 
-## 🚀 Overview
-
-**Chronos** is a distributed job scheduling and execution platform designed to reliably schedule, execute, monitor, and manage background jobs at scale.
-
-The project starts as a clean Spring Boot backend and progressively evolves into a distributed system capable of handling:
-
-* Scheduled jobs
-* Priority-based execution
-* Concurrent workers
-* Job retries
-* Failure handling
-* Idempotent execution
-* Distributed coordination
-* Caching
-* Asynchronous processing
-* Event-driven communication
-* Worker health monitoring
-* Horizontal scalability
-
-The goal is not simply to build a CRUD application.
-
-> **Chronos is a practical exploration of how production-grade backend systems are designed, implemented, scaled, and made fault tolerant.**
+</div>
 
 ---
 
-# 🎯 Why Chronos?
+## 📌 Project Status
 
-Many backend projects stop at:
+> 🚧 **Actively under development**
+
+Chronos is being built incrementally. The repository currently starts from a Spring Boot backend foundation and evolves toward a distributed scheduling system.
+
+The README deliberately distinguishes between **implemented foundations**, **work in progress**, and **target architecture** so that the project does not claim production capabilities before they are actually implemented.
+
+---
+
+## 🚀 What is Chronos?
+
+Chronos is a distributed job scheduling and execution platform designed around a simple problem:
+
+> **How do you reliably schedule work, execute it concurrently, recover from failures, and eventually scale execution across multiple machines?**
+
+Instead of stopping at a conventional:
 
 ```text
-Controller
-   ↓
-Service
-   ↓
-Database
+Controller → Service → Repository → Database
 ```
 
-Chronos intentionally goes much further.
+Chronos uses the project as a practical way to study and implement:
 
-```text
-                         Client
-                           │
-                           ▼
-                    Spring Boot API
-                           │
-             ┌─────────────┼─────────────┐
-             ▼             ▼             ▼
-        PostgreSQL       Redis          Kafka
-             │             │             │
-             │             │             ▼
-             │             │       Distributed Workers
-             │             │             │
-             │             └─────────────┤
-             │                           ▼
-             └────────────────────► Job Execution
-                                         │
-                              ┌───────────┴───────────┐
-                              ▼                       ▼
-                           Success                 Failure
-                              │                       │
-                              ▼                       ▼
-                           Result                  Retry
-                                                      │
-                                                      ▼
-                                               Dead Letter Queue
-```
-
-Every architectural decision is introduced to solve a real engineering problem.
-
----
-
-# 🧠 Core Engineering Goals
-
-Chronos focuses on becoming deeply proficient in:
-
-* Java backend development
-* Spring Boot
-* REST API design
-* PostgreSQL
-* SQL optimization
-* JPA/Hibernate
-* Transactions
-* Concurrency
-* Multithreading
-* Thread pools
-* Distributed systems
-* Redis
-* Kafka
-* Event-driven architecture
-* Fault tolerance
-* Distributed coordination
-* Caching
-* Idempotency
-* Observability
-* Docker
-* Testing
-* System design
+- Job scheduling and lifecycle management
+- Priority-based execution
+- Concurrent worker pools
+- Retries and exponential backoff
+- Idempotent execution
+- Database transactions and indexing
+- Redis-based coordination and caching
+- Kafka-based asynchronous execution
+- Worker health and failure detection
+- Distributed scheduler coordination
+- Horizontal scaling
+- Observability and production engineering
 
 ---
 
 # 🏗️ Architecture
 
-## Current Architecture
+## Architecture at a Glance
 
-The project begins with a simple layered backend:
-
-```text
-             Client
-                │
-                ▼
-        ┌────────────────┐
-        │ Spring Boot API│
-        └───────┬────────┘
-                │
-                ▼
-          ┌───────────┐
-          │Controller │
-          └─────┬─────┘
-                │
-                ▼
-          ┌───────────┐
-          │  Service  │
-          └─────┬─────┘
-                │
-                ▼
-          ┌───────────┐
-          │Repository │
-          └─────┬─────┘
-                │
-                ▼
-          ┌───────────┐
-          │PostgreSQL │
-          └───────────┘
-```
-
----
-
-## Target Architecture
-
-As the project evolves:
+The intended evolution is:
 
 ```text
-                         ┌──────────────┐
-                         │    Client    │
-                         └──────┬───────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │ Load Balancer   │
-                       └────────┬────────┘
-                                │
-                  ┌─────────────┴─────────────┐
-                  ▼                           ▼
-          ┌──────────────┐            ┌──────────────┐
-          │ Spring Boot  │            │ Spring Boot  │
-          │   Instance 1 │            │   Instance 2 │
-          └──────┬───────┘            └──────┬───────┘
-                 │                           │
-                 └─────────────┬─────────────┘
+                    ┌─────────────────────┐
+                    │       Client        │
+                    │ Web / API / CLI     │
+                    └──────────┬──────────┘
                                │
-                ┌──────────────┼──────────────┐
-                ▼              ▼              ▼
-          PostgreSQL         Redis          Kafka
-                │              │              │
-                │              │              ▼
-                │              │       ┌─────────────┐
-                │              └──────►│  Scheduler  │
-                │                      └──────┬──────┘
-                │                             │
-                │                             ▼
-                │                         Job Queue
-                │                             │
-                │                ┌────────────┼────────────┐
-                │                ▼            ▼            ▼
-                │             Worker 1     Worker 2     Worker 3
-                │                │            │            │
-                └────────────────┴────────────┴────────────┘
-                                             │
-                                             ▼
-                                      Job Execution
-                                             │
-                              ┌──────────────┴──────────────┐
-                              ▼                             ▼
-                           Success                       Failure
-                              │                             │
-                              ▼                             ▼
-                           Result                         Retry
-                                                            │
-                                                            ▼
-                                                     Dead Letter Queue
+                               ▼
+                    ┌─────────────────────┐
+                    │  Spring Boot API    │
+                    │ Controllers         │
+                    │ Services            │
+                    │ Validation          │
+                    └──────────┬──────────┘
+                               │
+                ┌──────────────┼───────────────┐
+                │              │               │
+                ▼              ▼               ▼
+        ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+        │ PostgreSQL   │ │    Redis     │ │    Kafka     │
+        │              │ │              │ │              │
+        │ Job state    │ │ Cache        │ │ Job events   │
+        │ Executions   │ │ Locks        │ │ Async queue  │
+        │ Metadata     │ │ Coordination │ │ Retry/DLQ    │
+        └──────────────┘ └──────┬───────┘ └──────┬───────┘
+                                │                 │
+                                └────────┬────────┘
+                                         ▼
+                              ┌────────────────────┐
+                              │ Scheduler /        │
+                              │ Dispatch Layer     │
+                              └─────────┬──────────┘
+                                        │
+                         ┌──────────────┼──────────────┐
+                         ▼              ▼              ▼
+                    ┌─────────┐   ┌─────────┐   ┌─────────┐
+                    │Worker 1 │   │Worker 2 │   │Worker N │
+                    └────┬────┘   └────┬────┘   └────┬────┘
+                         │             │             │
+                         └─────────────┼─────────────┘
+                                       ▼
+                              ┌──────────────────┐
+                              │  Job Execution   │
+                              └────────┬─────────┘
+                                       │
+                         ┌─────────────┴─────────────┐
+                         ▼                           ▼
+                    ┌──────────┐               ┌──────────┐
+                    │ Success  │               │ Failure  │
+                    └────┬─────┘               └────┬─────┘
+                         │                            │
+                         ▼                            ▼
+                   Completed                    Retry / Backoff
+                                                      │
+                                      ┌───────────────┴───────────────┐
+                                      ▼                               ▼
+                                  Re-queue                         DLQ
+```
+
+### Architecture image
+
+The repository also contains a visual architecture overview:
+
+![Chronos Architecture](docs/chronos-architecture.png)
+
+---
+
+## 🧭 Current vs Target Architecture
+
+### Current foundation
+
+Chronos begins intentionally as a modular Spring Boot application:
+
+```text
+Client
+  │
+  ▼
+REST Controller
+  │
+  ▼
+Service Layer
+  │
+  ▼
+Repository Layer
+  │
+  ▼
+PostgreSQL
+```
+
+This stage establishes:
+
+- REST API design
+- DTOs and validation
+- Service/repository separation
+- Persistence
+- Transactions
+- Error handling
+- Clean domain boundaries
+
+### Target distributed architecture
+
+As real engineering problems appear, the system evolves toward:
+
+```text
+                         Load Balancer
+                              │
+               ┌──────────────┼──────────────┐
+               ▼              ▼              ▼
+            API-1           API-2           API-N
+               │              │              │
+               └──────────────┼──────────────┘
+                              │
+             ┌────────────────┼────────────────┐
+             ▼                ▼                ▼
+        PostgreSQL          Redis             Kafka
+             │                │                │
+             │                │                ▼
+             │                │          Job Events / Queue
+             │                │                │
+             │                └──────► Scheduler
+             │                             │
+             │                             ▼
+             │                      Worker Pool
+             │                    ┌────┬────┬────┐
+             │                    ▼    ▼    ▼    ▼
+             │                   W1   W2   W3   WN
+             │                    │    │    │    │
+             └────────────────────┴────┴────┴────┘
+                                      │
+                                      ▼
+                                Job Execution
+                                      │
+                           ┌──────────┴──────────┐
+                           ▼                     ▼
+                       COMPLETED              FAILED
+                                                 │
+                                                 ▼
+                                              RETRY
+                                                 │
+                                      ┌──────────┴──────────┐
+                                      ▼                     ▼
+                                   Requeue                  DLQ
+```
+
+This separation makes the scaling model explicit:
+
+- **API instances** scale request handling.
+- **Schedulers** coordinate due jobs.
+- **Kafka** decouples scheduling from execution.
+- **Workers** scale execution capacity.
+- **PostgreSQL** remains the durable source of job state.
+- **Redis** handles fast coordination, caching, and distributed primitives.
+
+---
+
+# 🔄 Job Lifecycle
+
+Every job follows a controlled state machine:
+
+```text
+                    ┌───────────┐
+                    │  CREATED  │
+                    └─────┬─────┘
+                          ▼
+                    ┌───────────┐
+                    │ SCHEDULED │
+                    └─────┬─────┘
+                          ▼
+                    ┌───────────┐
+                    │  QUEUED   │
+                    └─────┬─────┘
+                          ▼
+                    ┌───────────┐
+                    │  RUNNING  │
+                    └─────┬─────┘
+                    ┌─────┴──────┐
+                    ▼            ▼
+               COMPLETED      FAILED
+                                 │
+                                 ▼
+                              RETRYING
+                                 │
+                                 ├──────────► RUNNING
+                                 │
+                                 ▼
+                            DEAD_LETTER
+```
+
+The state model makes execution history explicit and provides a foundation for retries, monitoring, idempotency, and recovery.
+
+---
+
+# ⚙️ Core Design
+
+## 1. Job Management
+
+Chronos models a job as durable scheduling state rather than simply a database row.
+
+Planned responsibilities include:
+
+- Create / read / update / delete jobs
+- Schedule time
+- Priority
+- Job status
+- Retry configuration
+- Execution metadata
+- Execution history
+- Failure information
+
+Example:
+
+```json
+{
+  "name": "Generate Monthly Report",
+  "description": "Generate the monthly sales report",
+  "scheduledAt": "2026-09-01T10:00:00",
+  "priority": 5,
+  "maxRetries": 3
+}
 ```
 
 ---
 
-# ✨ Features
+## 2. Scheduling Engine
 
-## Job Management
+The scheduler determines **which job should execute next and when**.
 
-* Create jobs
-* Retrieve jobs
-* Update jobs
-* Delete jobs
-* Job status tracking
-* Job metadata
-* Execution history
+A priority queue / heap is a natural data structure for selecting the next eligible job.
 
-## Scheduling
+```text
+             Scheduled Jobs
 
-* One-time jobs
-* Delayed execution
-* Recurring jobs
-* Priority-based scheduling
-* Efficient next-job selection
-* Scheduler lifecycle management
+       Job A → 10:01
+       Job B → 10:05
+       Job C → 10:02
 
-## Execution
+              │
+              ▼
 
-* Worker pools
-* Concurrent execution
-* Configurable worker count
-* Job timeout handling
-* Graceful shutdown
-* Execution tracking
+        ┌─────────────┐
+        │ Min Heap /  │
+        │ Priority Q  │
+        └──────┬──────┘
+               │
+               ▼
+       earliest / highest
+       priority eligible job
+```
 
-## Reliability
+Typical heap operations:
 
-* Automatic retries
-* Exponential backoff
-* Failure tracking
-* Dead-letter handling
-* Idempotent execution
-* Duplicate execution prevention
-
-## Distributed Systems
-
-* Distributed locking
-* Worker coordination
-* Scheduler coordination
-* Leader-election concepts
-* Failure detection
-* Horizontal scaling
-* Fault tolerance
-
-## Performance
-
-* Redis caching
-* Database indexing
-* Connection pooling
-* Asynchronous processing
-* Kafka-based messaging
-* Concurrent job execution
+| Operation | Complexity |
+|---|---:|
+| Peek minimum | O(1) |
+| Insert | O(log n) |
+| Remove minimum | O(log n) |
 
 ---
 
-# 🧩 Technology Stack
+## 3. Concurrent Execution
 
-| Category        | Technology           |
-| --------------- | -------------------- |
-| Language        | Java 21              |
-| Framework       | Spring Boot          |
-| API             | REST                 |
-| Database        | PostgreSQL           |
-| ORM             | Hibernate / JPA      |
-| Cache           | Redis                |
-| Messaging       | Apache Kafka         |
-| Build           | Maven                |
-| Testing         | JUnit / Mockito      |
-| Containers      | Docker               |
-| Monitoring      | Spring Boot Actuator |
-| Version Control | Git / GitHub         |
+A scheduler should not block on every job.
+
+Instead:
+
+```text
+                 Scheduler
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+       Worker 1   Worker 2   Worker 3
+          │          │          │
+        Job A      Job B      Job C
+```
+
+The implementation explores Java concurrency primitives such as:
+
+- `ExecutorService`
+- Thread pools
+- `CompletableFuture`
+- Concurrent collections
+- Locks
+- Atomic variables
+- Synchronization
+- Producer-consumer patterns
+- Race-condition prevention
+- Graceful shutdown
+
+---
+
+# 🧱 Reliability Model
+
+A scheduler is only useful if it behaves predictably when things fail.
+
+Chronos therefore treats reliability as a first-class design concern.
+
+## Retry with Backoff
+
+```text
+Job fails
+   │
+   ▼
+Attempt 1 ──► wait
+   │
+   ▼
+Attempt 2 ──► wait longer
+   │
+   ▼
+Attempt 3 ──► wait longer
+   │
+   ├── success ──► COMPLETED
+   │
+   └── failure ──► DEAD_LETTER
+```
+
+Potential policies:
+
+- Maximum retry count
+- Exponential backoff
+- Failure classification
+- Retryable vs non-retryable errors
+- Dead-letter handling
+
+## Idempotency
+
+Distributed systems can encounter duplicate delivery or duplicate execution attempts.
+
+Chronos therefore plans execution semantics around:
+
+```text
+same job + same execution identity
+              │
+              ▼
+       idempotency check
+          /          \
+       new             duplicate
+        │                 │
+        ▼                 ▼
+     execute            ignore
+```
+
+The goal is to prevent retries or duplicate messages from producing unintended side effects.
+
+---
+
+# 🔐 Distributed Coordination
+
+With multiple scheduler instances:
+
+```text
+Scheduler A ──┐
+Scheduler B ──┼────► Job #123
+Scheduler C ──┘
+```
+
+all instances may observe the same due job.
+
+A coordination mechanism is therefore required so that only the appropriate scheduler/worker claims the execution.
+
+Chronos explores:
+
+- Redis distributed locks
+- Leases
+- Atomic operations
+- Scheduler coordination
+- Worker heartbeats
+- Failure detection
+- Idempotency
+- Recovery after node failure
+
+---
+
+# 📨 Event-Driven Execution
+
+Kafka is introduced when synchronous coupling becomes a limitation.
+
+Instead of:
+
+```text
+Scheduler
+    │
+    └────────► Worker
+```
+
+the target architecture becomes:
+
+```text
+Scheduler
+    │
+    │ publish
+    ▼
+┌──────────────────────┐
+│        Kafka         │
+│                      │
+│ job.created          │
+│ job.started          │
+│ job.completed        │
+│ job.failed           │
+│ job.retry            │
+│ worker.heartbeat     │
+└──────────┬───────────┘
+           │
+           │ consume
+           ▼
+      Worker Group
+```
+
+This provides a foundation for:
+
+- Asynchronous execution
+- Consumer groups
+- Horizontal worker scaling
+- Retry topics
+- Dead-letter queues
+- Event-driven state updates
+
+---
+
+# 🗄️ Data & Persistence
+
+## PostgreSQL
+
+PostgreSQL acts as the durable store for important scheduling state.
+
+Potential domain tables:
+
+```text
+jobs
+ ├── job_id
+ ├── name
+ ├── status
+ ├── priority
+ ├── scheduled_at
+ ├── retry_count
+ └── created_at
+
+job_executions
+ ├── execution_id
+ ├── job_id
+ ├── worker_id
+ ├── status
+ ├── started_at
+ ├── completed_at
+ └── error_message
+
+workers
+ ├── worker_id
+ ├── status
+ ├── last_heartbeat
+ └── capacity
+```
+
+The schema will evolve as the execution model becomes more distributed.
+
+### Database engineering topics
+
+- Indexing
+- Transactions
+- ACID guarantees
+- Isolation levels
+- Connection pooling
+- Pagination
+- Query optimization
+- Database migrations
+
+---
+
+# ⚡ Redis
+
+Redis is intended for fast, ephemeral, or coordination-oriented operations:
+
+```text
+Redis
+ ├── Cache
+ ├── Distributed locks
+ ├── Worker heartbeat state
+ ├── Rate limiting
+ └── Short-lived scheduling state
+```
+
+A key design principle is:
+
+> **PostgreSQL owns durable state; Redis accelerates or coordinates it.**
+
+This avoids treating the cache as the primary source of truth.
+
+---
+
+# 📊 Observability
+
+Production systems need more than logs.
+
+Chronos plans to expose:
+
+- Application health
+- Job execution latency
+- Queue depth
+- Failure rate
+- Retry count
+- Worker health
+- Scheduler health
+- Database metrics
+- Structured logs
+- Distributed traces
+
+The monitoring direction is:
+
+```text
+Chronos
+   │
+   ├── Metrics ─────► Prometheus ─────► Grafana
+   │
+   ├── Logs ────────► Log pipeline ────► Search / dashboards
+   │
+   └── Traces ──────► OpenTelemetry
+```
+
+Spring Boot Actuator provides the application health and metrics foundation.
+
+---
+
+# 🧠 Data Structures & Algorithms
+
+DSA is used because the system needs it, not because it looks good on a resume.
+
+| Structure / Algorithm | Chronos Use Case |
+|---|---|
+| Priority Queue / Heap | Next-job selection |
+| HashMap | Fast state / worker lookup |
+| Queue | Producer-consumer execution |
+| Concurrent Collections | Thread-safe state |
+| Graph | Future job dependencies |
+| DFS / BFS | Dependency traversal |
+| Topological Sort | DAG execution ordering |
+
+Future dependency support could model:
+
+```text
+       Job A
+      /     \
+     ▼       ▼
+   Job B   Job C
+     │
+     ▼
+   Job D
+```
+
+This naturally leads to DAG validation and topological ordering.
 
 ---
 
@@ -302,7 +626,6 @@ chronos/
 │   ├── main/
 │   │   ├── java/
 │   │   │   └── com/chronos/
-│   │   │       │
 │   │   │       ├── controller/
 │   │   │       ├── service/
 │   │   │       ├── repository/
@@ -321,130 +644,66 @@ chronos/
 │   └── test/
 │
 ├── docker/
-│
 ├── docs/
-│
+│   └── chronos-architecture.png
 ├── pom.xml
 ├── docker-compose.yml
 └── README.md
 ```
 
----
-
-# 🔄 Job Lifecycle
-
-A job moves through a controlled lifecycle:
-
-```text
-CREATED
-   │
-   ▼
-SCHEDULED
-   │
-   ▼
-QUEUED
-   │
-   ▼
-RUNNING
-   │
-   ├──────────────► COMPLETED
-   │
-   ▼
-FAILED
-   │
-   ▼
-RETRYING
-   │
-   ├──────────────► RUNNING
-   │
-   ▼
-DEAD_LETTER
-```
-
-This lifecycle allows Chronos to track exactly what happened to every execution.
+As the project grows, scheduler and worker responsibilities can be separated into explicit modules/services.
 
 ---
 
-# 🧠 Data Structures Used
+# 🧪 Testing Strategy
 
-DSA is not added artificially.
+Chronos is intended to be tested at several levels.
 
-The project uses data structures where they naturally solve backend problems.
+### Unit Tests
 
-### Priority Queue / Heap
-
-Used for efficient scheduling:
+Test isolated business behavior:
 
 ```text
-Job A → 10:01
-Job B → 10:05
-Job C → 10:02
-
-          ↓
-
-Priority Queue
-
-Job A
-  ↓
-Job C
-  ↓
-Job B
+Scheduler
+Retry Policy
+Priority Selection
+Job State Transitions
+Idempotency
 ```
 
-Operations:
+### Integration Tests
+
+Verify:
 
 ```text
-Peek minimum     O(1)
-Insert           O(log n)
-Remove minimum   O(log n)
+REST API
+   ↓
+Service
+   ↓
+Repository
+   ↓
+PostgreSQL
 ```
 
-### HashMap
+### Distributed / Concurrency Tests
 
-Used for fast lookup of:
+Eventually test failure scenarios such as:
 
-* jobs
-* workers
-* execution state
-* cached data
-
-Average lookup:
-
-```text
-O(1)
-```
-
-### Queue
-
-Used for:
-
-* pending jobs
-* worker communication
-* producer-consumer workflows
-
-### Graphs
-
-Future scheduling/dependency support can model:
-
-```text
-Job A
- ├──► Job B
- │      └──► Job D
- └──► Job C
-```
-
-This introduces:
-
-* DFS
-* BFS
-* Topological Sort
-* dependency resolution
+- Concurrent job claims
+- Duplicate delivery
+- Worker failure
+- Scheduler failure
+- Retry behavior
+- Lock expiration
+- Database conflicts
+- Queue backlog
+- Graceful shutdown
 
 ---
 
-# 🔐 Security
+# 🔒 Security
 
-Planned security architecture:
+The planned API security model is:
 
 ```text
 Client
@@ -465,361 +724,157 @@ Authorization
 Protected APIs
 ```
 
-Features:
+Planned capabilities:
 
-* User registration
-* Login
-* Password hashing
-* JWT authentication
-* Role-based authorization
-* Protected endpoints
-* API security
+- User registration
+- Password hashing
+- JWT authentication
+- Role-based authorization
+- Protected endpoints
+- API-level authorization
 
----
-
-# ⚡ Concurrency
-
-Chronos uses Java concurrency to execute independent jobs simultaneously.
-
-Instead of:
-
-```text
-Job A → finish → Job B → finish → Job C
-```
-
-workers can execute:
-
-```text
-Worker 1 → Job A
-Worker 2 → Job B
-Worker 3 → Job C
-```
-
-Concepts explored:
-
-* Threads
-* ExecutorService
-* Thread pools
-* CompletableFuture
-* Synchronization
-* Locks
-* Atomic variables
-* Concurrent collections
-* Race conditions
-* Deadlocks
-* Producer-consumer patterns
+Security features are marked as planned until implemented.
 
 ---
 
-# 🧠 Distributed Coordination
+# 🧩 Technology Stack
 
-When multiple scheduler instances exist:
-
-```text
-Scheduler 1 ──┐
-Scheduler 2 ──┼──► Job #123
-Scheduler 3 ──┘
-```
-
-they must not accidentally execute the same job multiple times.
-
-Chronos explores:
-
-* Distributed locks
-* Leases
-* Idempotency
-* Atomic operations
-* Scheduler coordination
-* Failure recovery
-
----
-
-# 📈 Scalability
-
-The architecture is designed to evolve from:
-
-```text
-1 API
-1 Scheduler
-1 Worker
-1 Database
-```
-
-to:
-
-```text
-             Load Balancer
-                  │
-       ┌──────────┼──────────┐
-       ▼          ▼          ▼
-     API 1      API 2      API 3
-       │          │          │
-       └──────────┼──────────┘
-                  │
-              Kafka / Redis
-                  │
-       ┌──────────┼──────────┐
-       ▼          ▼          ▼
-    Worker 1   Worker 2   Worker 3
-```
-
-This allows job execution capacity to scale horizontally.
-
----
-
-# 🧪 Testing Strategy
-
-Testing will exist at multiple levels.
-
-### Unit Tests
-
-Test individual components.
-
-```text
-Service
-Scheduler
-Retry logic
-Priority logic
-```
-
-### Integration Tests
-
-Test:
-
-```text
-API
- ↓
-Service
- ↓
-Repository
- ↓
-Database
-```
-
-### Distributed Testing
-
-Eventually test:
-
-* concurrent execution
-* duplicate jobs
-* worker failures
-* scheduler failures
-* retry behaviour
-* distributed coordination
-
----
-
-# 📊 Observability
-
-Production-oriented monitoring will include:
-
-* structured logging
-* application health
-* job metrics
-* execution latency
-* failure rate
-* retry count
-* worker status
-* queue depth
-* database metrics
-
-Spring Boot Actuator will be used for application health and metrics exposure.
+| Layer | Technology | Purpose |
+|---|---|---|
+| Language | Java 21 | Backend implementation |
+| Framework | Spring Boot 3.x | Application framework |
+| API | REST | Client interface |
+| Database | PostgreSQL | Durable state |
+| ORM | Hibernate / JPA | Persistence |
+| Cache / Coordination | Redis | Caching and distributed primitives |
+| Messaging | Apache Kafka | Event streaming |
+| Build | Maven | Dependency/build management |
+| Testing | JUnit / Mockito | Automated testing |
+| Containers | Docker | Reproducible environments |
+| Monitoring | Spring Boot Actuator | Health and metrics |
+| API Docs | OpenAPI / Swagger | API exploration |
 
 ---
 
 # 🗺️ Development Roadmap
 
-## Phase 1 — Backend Foundations
+The roadmap is deliberately incremental.
 
-* [x] Spring Boot project setup
-* [ ] REST API
-* [ ] Controller layer
-* [ ] Service layer
-* [ ] Repository layer
-* [ ] Job entity
-* [ ] PostgreSQL integration
-* [ ] DTOs
-* [ ] Validation
-* [ ] Exception handling
+### Phase 1 — Backend Foundation
 
-## Phase 2 — Database Engineering
+- [x] Spring Boot project setup
+- [ ] REST API
+- [ ] Controller layer
+- [ ] Service layer
+- [ ] Repository layer
+- [ ] Job entity
+- [ ] PostgreSQL integration
+- [ ] DTOs
+- [ ] Validation
+- [ ] Exception handling
 
-* [ ] PostgreSQL schema
-* [ ] Relationships
-* [ ] Indexes
-* [ ] Transactions
-* [ ] Pagination
-* [ ] Query optimization
-* [ ] Connection pooling
-* [ ] Database migrations
+### Phase 2 — Database Engineering
 
-## Phase 3 — Security
+- [ ] Production-oriented schema
+- [ ] Relationships
+- [ ] Indexes
+- [ ] Transactions
+- [ ] Pagination
+- [ ] Query optimization
+- [ ] Connection pooling
+- [ ] Database migrations
 
-* [ ] User management
-* [ ] Spring Security
-* [ ] Password hashing
-* [ ] JWT authentication
-* [ ] Authorization
-* [ ] Role-based access
+### Phase 3 — Scheduling Engine
 
-## Phase 4 — Scheduling Engine
+- [ ] Job scheduling
+- [ ] Priority queue
+- [ ] Delayed jobs
+- [ ] Recurring jobs
+- [ ] Job state machine
+- [ ] Scheduler lifecycle
 
-* [ ] Job scheduling
-* [ ] Priority queue
-* [ ] Delayed jobs
-* [ ] Recurring jobs
-* [ ] Job lifecycle
-* [ ] Scheduler engine
+### Phase 4 — Concurrency & Workers
 
-## Phase 5 — Concurrency
+- [ ] Worker pool
+- [ ] `ExecutorService`
+- [ ] Concurrent execution
+- [ ] Thread-safety guarantees
+- [ ] Race-condition handling
+- [ ] Job timeouts
+- [ ] Graceful shutdown
 
-* [ ] Worker pool
-* [ ] ExecutorService
-* [ ] Concurrent execution
-* [ ] Thread safety
-* [ ] Race-condition handling
-* [ ] Graceful shutdown
+### Phase 5 — Reliability
 
-## Phase 6 — Redis
+- [ ] Retry policies
+- [ ] Exponential backoff
+- [ ] Failure classification
+- [ ] Idempotency
+- [ ] Dead-letter handling
+- [ ] Execution history
 
-* [ ] Caching
-* [ ] TTL
-* [ ] Cache invalidation
-* [ ] Atomic operations
-* [ ] Distributed locking
-* [ ] Rate limiting
+### Phase 6 — Redis & Coordination
 
-## Phase 7 — Kafka
+- [ ] Caching
+- [ ] TTL
+- [ ] Cache invalidation
+- [ ] Atomic operations
+- [ ] Distributed locks
+- [ ] Worker heartbeats
+- [ ] Rate limiting
 
-* [ ] Producers
-* [ ] Consumers
-* [ ] Topics
-* [ ] Partitions
-* [ ] Consumer groups
-* [ ] Retry topics
-* [ ] Dead-letter queues
-* [ ] Event-driven execution
+### Phase 7 — Kafka & Event-Driven Architecture
 
-## Phase 8 — Distributed System
+- [ ] Producers
+- [ ] Consumers
+- [ ] Topics
+- [ ] Partitions
+- [ ] Consumer groups
+- [ ] Retry topics
+- [ ] Dead-letter queues
+- [ ] Asynchronous execution
 
-* [ ] Multiple scheduler instances
-* [ ] Distributed coordination
-* [ ] Worker health
-* [ ] Failure detection
-* [ ] Idempotency
-* [ ] Fault tolerance
-* [ ] Horizontal scaling
+### Phase 8 — Distributed System
 
-## Phase 9 — Production Engineering
+- [ ] Multiple scheduler instances
+- [ ] Scheduler coordination
+- [ ] Worker registration
+- [ ] Worker health
+- [ ] Failure detection
+- [ ] Recovery
+- [ ] Horizontal scaling
 
-* [ ] Docker
-* [ ] Docker Compose
-* [ ] Unit testing
-* [ ] Integration testing
-* [ ] Observability
-* [ ] Metrics
-* [ ] CI/CD
-* [ ] Load testing
-* [ ] Production deployment
+### Phase 9 — Production Engineering
 
----
-
-# 📚 Engineering Concepts Demonstrated
-
-Chronos is designed as a learning and engineering project around:
-
-```text
-Java
-│
-├── OOP
-├── Collections
-├── Generics
-├── Exceptions
-├── Streams
-├── JVM fundamentals
-├── Concurrency
-└── Multithreading
-
-Spring Boot
-│
-├── Dependency Injection
-├── IoC
-├── REST
-├── Spring Data
-├── Spring Security
-└── Actuator
-
-Databases
-│
-├── SQL
-├── PostgreSQL
-├── Indexes
-├── Transactions
-├── ACID
-├── Isolation
-└── Query optimization
-
-Distributed Systems
-│
-├── Redis
-├── Kafka
-├── Distributed locks
-├── Idempotency
-├── Fault tolerance
-└── Horizontal scaling
-
-Software Engineering
-│
-├── Testing
-├── Docker
-├── CI/CD
-├── Logging
-├── Monitoring
-└── System Design
-```
-
----
-
-# 🎓 Learning Philosophy
-
-Chronos is intentionally developed **incrementally**.
-
-We don't introduce Kafka simply because it looks good on a resume.
-
-We introduce it when synchronous execution creates a real architectural problem.
-
-We don't introduce Redis just to list Redis on a resume.
-
-We introduce caching and distributed coordination when the system actually needs them.
-
-We don't introduce concurrency just because it is an interview keyword.
-
-We use concurrency because a scheduler must efficiently execute independent jobs.
-
-### The principle:
-
-> **Understand the problem → understand the trade-off → choose the technology → implement it → test it → measure it.**
+- [ ] Docker Compose
+- [ ] Unit testing
+- [ ] Integration testing
+- [ ] Observability
+- [ ] Metrics
+- [ ] Distributed tracing
+- [ ] CI/CD
+- [ ] Load testing
+- [ ] Deployment
 
 ---
 
 # 🚀 Getting Started
 
-### Prerequisites
+## Prerequisites
 
-Install:
+For the current backend foundation:
 
-* Java 21+
-* Maven
-* PostgreSQL
-* Git
+- Java 21+
+- Maven
+- PostgreSQL
+- Git
 
-Later phases additionally require:
+Later distributed phases additionally require:
 
-* Redis
-* Apache Kafka
-* Docker
+- Redis
+- Apache Kafka
+- Docker
 
-### Clone
+## Clone
 
 ```bash
 git clone https://github.com/<your-username>/chronos-distributed-scheduler.git
@@ -827,7 +882,9 @@ git clone https://github.com/<your-username>/chronos-distributed-scheduler.git
 cd chronos-distributed-scheduler
 ```
 
-### Run
+## Run
+
+Linux / macOS:
 
 ```bash
 ./mvnw spring-boot:run
@@ -835,7 +892,7 @@ cd chronos-distributed-scheduler
 
 Windows:
 
-```bash
+```powershell
 mvnw.cmd spring-boot:run
 ```
 
@@ -843,93 +900,141 @@ mvnw.cmd spring-boot:run
 
 # 📡 API
 
-Initial API:
+The initial REST surface is:
 
-```text
-POST   /api/jobs
-GET    /api/jobs
-GET    /api/jobs/{id}
-PUT    /api/jobs/{id}
-DELETE /api/jobs/{id}
-```
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/jobs` | Create a job |
+| `GET` | `/api/jobs` | List jobs |
+| `GET` | `/api/jobs/{id}` | Get a job |
+| `PUT` | `/api/jobs/{id}` | Update a job |
+| `DELETE` | `/api/jobs/{id}` | Delete a job |
 
-The API will expand as the scheduling engine evolves.
-
----
-
-# 🧪 Example Job
-
-```json
-{
-  "name": "Generate Monthly Report",
-  "description": "Generate the monthly sales report",
-  "scheduledAt": "2026-09-01T10:00:00"
-}
-```
-
-Example response:
-
-```json
-{
-  "id": 1,
-  "name": "Generate Monthly Report",
-  "description": "Generate the monthly sales report",
-  "status": "SCHEDULED",
-  "scheduledAt": "2026-09-01T10:00:00"
-}
-```
+As scheduling and execution are implemented, the API will expand to include execution and operational endpoints.
 
 ---
 
-# 📈 Future Improvements
+# 🎯 Engineering Problems Chronos Solves
 
-Potential future capabilities include:
+Chronos is structured around concrete backend problems.
 
-* Job dependencies
-* Cron expressions
-* Priority scheduling
-* Job DAGs
-* Worker registration
-* Worker heartbeats
-* Automatic worker recovery
-* Distributed rate limiting
-* Multi-tenant scheduling
-* Job quotas
-* Execution dashboards
-* WebSocket-based live execution updates
-* Advanced retry policies
-* Workflow orchestration
-* Load-aware scheduling
+| Problem | Design Direction |
+|---|---|
+| Which job runs next? | Priority queue / scheduling policy |
+| How do jobs execute concurrently? | Worker pool |
+| What happens after failure? | Retry + backoff |
+| How are duplicates controlled? | Idempotency |
+| How do multiple schedulers coordinate? | Distributed locks / leases |
+| How do workers scale? | Kafka + consumer groups |
+| How is durable state stored? | PostgreSQL |
+| How is fast coordination handled? | Redis |
+| How are failures observed? | Metrics + logs + tracing |
+| How does execution scale? | Horizontal worker scaling |
 
 ---
 
-# 💡 What This Project Demonstrates
+# 💡 Design Principles
 
-Chronos is designed to demonstrate that the developer understands more than framework syntax.
+### 1. Durable state has an owner
 
-It demonstrates understanding of:
+PostgreSQL is the durable source of truth for job and execution state.
 
-**Backend architecture**
+### 2. Caches are not databases
 
-**Database engineering**
+Redis should accelerate or coordinate operations rather than silently becoming the only copy of critical state.
 
-**Data structures**
+### 3. Messaging decouples components
 
-**Concurrency**
+Kafka is introduced to decouple scheduling from execution when the system requires asynchronous processing and horizontal worker scaling.
 
-**Distributed systems**
+### 4. Concurrency must be controlled
 
-**Event-driven architecture**
+More threads do not automatically mean more throughput. Worker capacity, backpressure, shared state, and failure behavior must be considered together.
 
-**Reliability**
+### 5. Exactly-once is not assumed
 
-**Performance**
+Distributed execution is designed around explicit idempotency and duplicate-handling rather than assuming that a message or job will never be delivered twice.
 
-**Testing**
+### 6. Architecture follows the problem
 
-**Production engineering**
+Chronos does not add Kafka, Redis, distributed locks, or multiple services merely to increase the technology list.
 
-**System design**
+> **A technology enters the architecture when it solves a real problem.**
+
+---
+
+# 📚 What This Project Demonstrates
+
+Chronos is intended to demonstrate engineering depth across:
+
+### Java
+
+- OOP
+- Collections
+- Generics
+- Exceptions
+- Streams
+- JVM fundamentals
+- Concurrency
+- Multithreading
+
+### Spring Boot
+
+- Dependency Injection
+- IoC
+- REST
+- Spring Data
+- Spring Security
+- Actuator
+
+### Databases
+
+- SQL
+- PostgreSQL
+- Indexing
+- Transactions
+- ACID
+- Isolation
+- Query optimization
+
+### Distributed Systems
+
+- Redis
+- Kafka
+- Distributed locks
+- Idempotency
+- Fault tolerance
+- Horizontal scaling
+
+### Software Engineering
+
+- Testing
+- Docker
+- CI/CD
+- Logging
+- Monitoring
+- System design
+
+---
+
+# 🔮 Future Extensions
+
+Potential extensions include:
+
+- Cron expressions
+- Job dependencies
+- DAG-based workflows
+- Worker registration
+- Worker heartbeats
+- Automatic worker recovery
+- Distributed rate limiting
+- Multi-tenancy
+- Job quotas
+- Execution dashboard
+- WebSocket live execution updates
+- Advanced retry policies
+- Workflow orchestration
+- Load-aware scheduling
 
 ---
 
@@ -941,26 +1046,18 @@ Computer Science & Information Technology
 
 Interested in:
 
-* Backend Engineering
-* Distributed Systems
-* AI/ML
-* LLMs
-* System Design
+- Backend Engineering
+- Distributed Systems
+- AI/ML
+- LLMs
+- System Design
 
 ---
 
-# ⭐ Project Status
-
-🚧 **Actively under development**
-
-Chronos is being built progressively from a Spring Boot REST API into a production-oriented distributed scheduling platform.
-
----
-
-<p align="center">
+<div align="center">
 
 ### ⚙️ Build it. Break it. Scale it. Understand it.
 
-**Chronos — Distributed Job Scheduling Platform**
+**Chronos — Distributed Job Scheduling & Execution Platform**
 
-</p>
+</div>
