@@ -89,7 +89,8 @@ public class JobExecutionService {
                         job.getId(),
                         savedExecution.getId(),
                         job.getPriority(),
-                        sequenceNumber
+                        sequenceNumber,
+                        "DEFAULT"
                 );
 
         /*

@@ -21,7 +21,8 @@ class ScheduledJobComparatorTest {
                         1L,
                         101L,
                         1,
-                        1
+                        1,
+                        "DEFAULT"
                 );
 
         ScheduledJob highPriority =
@@ -29,7 +30,8 @@ class ScheduledJobComparatorTest {
                         2L,
                         102L,
                         5,
-                        2
+                        2,
+                        "DEFAULT"
                 );
 
         List<ScheduledJob> jobs =
@@ -61,7 +63,8 @@ class ScheduledJobComparatorTest {
                         1L,
                         101L,
                         5,
-                        1
+                        1,
+                        "DEFAULT"
                 );
 
         ScheduledJob newer =
@@ -69,7 +72,8 @@ class ScheduledJobComparatorTest {
                         2L,
                         102L,
                         5,
-                        2
+                        2,
+                        "DEFAULT"
                 );
 
         List<ScheduledJob> jobs =
@@ -101,7 +105,8 @@ class ScheduledJobComparatorTest {
                         1L,
                         101L,
                         1,
-                        1
+                        1,
+                        "DEFAULT"
                 );
 
         ScheduledJob highPriorityNewer =
@@ -109,7 +114,8 @@ class ScheduledJobComparatorTest {
                         2L,
                         102L,
                         5,
-                        100
+                        100,
+                        "DEFAULT"
                 );
 
         List<ScheduledJob> jobs =

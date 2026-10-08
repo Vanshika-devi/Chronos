@@ -45,7 +45,8 @@ class SchedulerPriorityCalculatorTest {
                         1L,
                         101L,
                         1,
-                        1L
+                        1L,
+                        "DEFAULT"
                 );
 
         job.markQueued(start);
@@ -96,7 +97,8 @@ class SchedulerPriorityCalculatorTest {
                         1L,
                         101L,
                         1,
-                        1L
+                        1L,
+                        "DEFAULT"
                 );
 
         job.markQueued(start);

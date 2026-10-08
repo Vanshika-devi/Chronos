@@ -5,7 +5,9 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -22,14 +24,19 @@ public class JobQueue {
             lock.newCondition();
 
     private final SchedulerPriorityCalculator priorityCalculator;
+    private final FairnessPolicy fairnessPolicy;
     private final Clock clock;
 
     public JobQueue(
             SchedulerPriorityCalculator priorityCalculator,
+            FairnessPolicy fairnessPolicy,
             Clock clock) {
 
         this.priorityCalculator =
                 priorityCalculator;
+
+        this.fairnessPolicy =
+                fairnessPolicy;
 
         this.clock = clock;
     }
@@ -107,6 +114,7 @@ public class JobQueue {
             return jobs.isEmpty();
 
         } finally {
+
             lock.unlock();
         }
     }
@@ -119,57 +127,131 @@ public class JobQueue {
             return jobs.size();
 
         } finally {
+
             lock.unlock();
         }
     }
 
     private int findBestJobIndex() {
 
-        int bestIndex = 0;
+        int highestEffectivePriority =
+                findHighestEffectivePriority();
 
-        for (int i = 1; i < jobs.size(); i++) {
+        List<ScheduledJob> candidates =
+                findCandidates(
+                        highestEffectivePriority
+                );
 
-            ScheduledJob current =
-                    jobs.get(i);
+        Set<String> eligibleGroupSet =
+                new HashSet<>();
 
-            ScheduledJob best =
-                    jobs.get(bestIndex);
+        for (ScheduledJob job : candidates) {
 
-            if (comesBefore(current, best)) {
-                bestIndex = i;
+            eligibleGroupSet.add(
+                    job.getSchedulingGroup()
+            );
+        }
+
+        String selectedGroup =
+                fairnessPolicy.selectGroup(
+                        new ArrayList<>(
+                                eligibleGroupSet
+                        )
+                );
+
+        return findBestJobInGroup(
+                candidates,
+                selectedGroup
+        );
+    }
+
+    private int findHighestEffectivePriority() {
+
+        int highestPriority =
+                Integer.MIN_VALUE;
+
+        for (ScheduledJob job : jobs) {
+
+            int effectivePriority =
+                    priorityCalculator
+                            .calculateEffectivePriority(job);
+
+            if (effectivePriority
+                    > highestPriority) {
+
+                highestPriority =
+                        effectivePriority;
             }
         }
 
-        return bestIndex;
+        return highestPriority;
     }
 
-    private boolean comesBefore(
-            ScheduledJob first,
-            ScheduledJob second) {
+    private List<ScheduledJob> findCandidates(
+            int highestEffectivePriority) {
 
-        int firstEffectivePriority =
-                priorityCalculator
-                        .calculateEffectivePriority(first);
+        List<ScheduledJob> candidates =
+                new ArrayList<>();
 
-        int secondEffectivePriority =
-                priorityCalculator
-                        .calculateEffectivePriority(second);
+        for (ScheduledJob job : jobs) {
 
-        /*
-         * Higher effective priority wins.
-         */
-        if (firstEffectivePriority
-                != secondEffectivePriority) {
+            int effectivePriority =
+                    priorityCalculator
+                            .calculateEffectivePriority(job);
 
-            return firstEffectivePriority
-                    > secondEffectivePriority;
+            if (effectivePriority
+                    == highestEffectivePriority) {
+
+                candidates.add(job);
+            }
         }
 
-        /*
-         * Same effective priority:
-         * older sequence number wins.
-         */
-        return first.getSequenceNumber()
-                < second.getSequenceNumber();
+        return candidates;
+    }
+
+    private int findBestJobInGroup(
+            List<ScheduledJob> candidates,
+            String selectedGroup) {
+
+        int bestIndex = -1;
+
+        for (ScheduledJob job : candidates) {
+
+            if (!job.getSchedulingGroup()
+                    .equals(selectedGroup)) {
+                continue;
+            }
+
+            int currentIndex =
+                    jobs.indexOf(job);
+
+            if (bestIndex == -1) {
+
+                bestIndex =
+                        currentIndex;
+
+                continue;
+            }
+
+            ScheduledJob bestJob =
+                    jobs.get(bestIndex);
+
+            if (job.getSequenceNumber()
+                    < bestJob.getSequenceNumber()) {
+
+                bestIndex =
+                        currentIndex;
+            }
+        }
+
+        if (bestIndex == -1) {
+
+            throw new IllegalStateException(
+                    "Fairness policy selected a group "
+                            + "that has no candidate job."
+            );
+        }
+
+        return bestIndex;
     }
 }
