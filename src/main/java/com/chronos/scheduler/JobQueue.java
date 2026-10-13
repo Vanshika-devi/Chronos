@@ -1,3 +1,4 @@
+
 package com.chronos.scheduler;
 
 import org.springframework.stereotype.Component;
@@ -43,6 +44,12 @@ public class JobQueue {
 
     public void add(ScheduledJob scheduledJob) {
 
+        if (scheduledJob == null) {
+            throw new IllegalArgumentException(
+                    "Scheduled job cannot be null."
+            );
+        }
+
         Instant queuedAt =
                 Instant.now(clock);
 
@@ -51,57 +58,60 @@ public class JobQueue {
         lock.lock();
 
         try {
-
             jobs.add(scheduledJob);
 
             notEmpty.signal();
 
         } finally {
-
             lock.unlock();
         }
     }
 
-    public ScheduledJob take()
-            throws InterruptedException {
+
+    public ScheduledJob take() throws InterruptedException {
 
         lock.lockInterruptibly();
 
         try {
 
             while (jobs.isEmpty()) {
-
                 notEmpty.await();
             }
 
-            int bestIndex =
-                    findBestJobIndex();
+            int bestIndex = findBestJobIndex(false);
 
-            return jobs.remove(bestIndex);
+            ScheduledJob selectedJob = jobs.get(bestIndex);
+
+            jobs.remove(bestIndex);
+
+            fairnessPolicy.recordSelection(
+                    selectedJob.getSchedulingGroup()
+            );
+
+            return selectedJob;
 
         } finally {
-
             lock.unlock();
         }
     }
+
 
     public ScheduledJob peek() {
 
         lock.lock();
 
         try {
-
             if (jobs.isEmpty()) {
                 return null;
             }
 
+            // Preview must not advance fairness state.
             int bestIndex =
-                    findBestJobIndex();
+                    findBestJobIndex(false);
 
             return jobs.get(bestIndex);
 
         } finally {
-
             lock.unlock();
         }
     }
@@ -114,7 +124,6 @@ public class JobQueue {
             return jobs.isEmpty();
 
         } finally {
-
             lock.unlock();
         }
     }
@@ -127,12 +136,12 @@ public class JobQueue {
             return jobs.size();
 
         } finally {
-
             lock.unlock();
         }
     }
 
-    private int findBestJobIndex() {
+    private int findBestJobIndex(
+            boolean recordFairnessSelection) {
 
         int highestEffectivePriority =
                 findHighestEffectivePriority();
@@ -146,17 +155,21 @@ public class JobQueue {
                 new HashSet<>();
 
         for (ScheduledJob job : candidates) {
-
             eligibleGroupSet.add(
                     job.getSchedulingGroup()
             );
         }
 
+        List<String> eligibleGroups =
+                new ArrayList<>(eligibleGroupSet);
+
         String selectedGroup =
-                fairnessPolicy.selectGroup(
-                        new ArrayList<>(
-                                eligibleGroupSet
-                        )
+                recordFairnessSelection
+                        ? fairnessPolicy.selectGroup(
+                        new ArrayList<>(eligibleGroupSet)
+                )
+                        : fairnessPolicy.previewGroup(
+                        new ArrayList<>(eligibleGroupSet)
                 );
 
         return findBestJobInGroup(
@@ -176,11 +189,8 @@ public class JobQueue {
                     priorityCalculator
                             .calculateEffectivePriority(job);
 
-            if (effectivePriority
-                    > highestPriority) {
-
-                highestPriority =
-                        effectivePriority;
+            if (effectivePriority > highestPriority) {
+                highestPriority = effectivePriority;
             }
         }
 
@@ -226,10 +236,7 @@ public class JobQueue {
                     jobs.indexOf(job);
 
             if (bestIndex == -1) {
-
-                bestIndex =
-                        currentIndex;
-
+                bestIndex = currentIndex;
                 continue;
             }
 
@@ -239,13 +246,11 @@ public class JobQueue {
             if (job.getSequenceNumber()
                     < bestJob.getSequenceNumber()) {
 
-                bestIndex =
-                        currentIndex;
+                bestIndex = currentIndex;
             }
         }
 
         if (bestIndex == -1) {
-
             throw new IllegalStateException(
                     "Fairness policy selected a group "
                             + "that has no candidate job."

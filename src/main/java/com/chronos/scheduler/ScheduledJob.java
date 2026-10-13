@@ -1,6 +1,8 @@
+
 package com.chronos.scheduler;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public class ScheduledJob {
 
@@ -19,8 +21,35 @@ public class ScheduledJob {
             long sequenceNumber,
             String schedulingGroup) {
 
-        this.jobId = jobId;
-        this.executionId = executionId;
+        this.jobId = Objects.requireNonNull(
+                jobId,
+                "jobId cannot be null."
+        );
+
+        this.executionId = Objects.requireNonNull(
+                executionId,
+                "executionId cannot be null."
+        );
+
+        if (priority < 1) {
+            throw new IllegalArgumentException(
+                    "Priority must be at least 1."
+            );
+        }
+
+        if (sequenceNumber < 1) {
+            throw new IllegalArgumentException(
+                    "Sequence number must be positive."
+            );
+        }
+
+        if (schedulingGroup == null
+                || schedulingGroup.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Scheduling group cannot be null or blank."
+            );
+        }
+
         this.priority = priority;
         this.sequenceNumber = sequenceNumber;
         this.schedulingGroup = schedulingGroup;

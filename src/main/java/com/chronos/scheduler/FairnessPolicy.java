@@ -1,3 +1,4 @@
+
 package com.chronos.scheduler;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -28,80 +29,66 @@ public class FairnessPolicy {
         this.maxConsecutive = maxConsecutive;
     }
 
+
     public synchronized String selectGroup(
             List<String> eligibleGroups) {
 
-        if (eligibleGroups == null
-                || eligibleGroups.isEmpty()) {
+        String selected = previewGroup(eligibleGroups);
 
+        if (selected == null) {
             return null;
         }
 
-        List<String> groups =
-                new ArrayList<>(eligibleGroups);
+        recordSelection(selected);
 
-        Collections.sort(groups);
+        return selected;
+    }
 
-        /*
-         * First selection.
-         */
-        if (lastSelectedGroup == null) {
 
-            return selectAndRecord(
-                    groups.get(0)
-            );
+    public synchronized String previewGroup(
+            List<String> eligibleGroups) {
+
+        if (eligibleGroups == null || eligibleGroups.isEmpty()) {
+            return null;
         }
 
-        /*
-         * If we have already selected the same
-         * group too many times consecutively,
-         * switch to another available group.
-         */
+        List<String> groups = new ArrayList<>(eligibleGroups);
+        Collections.sort(groups);
+
+        if (lastSelectedGroup == null) {
+            return groups.get(0);
+        }
+
         if (consecutiveCount >= maxConsecutive
                 && groups.size() > 1) {
 
             for (String group : groups) {
-
                 if (!group.equals(lastSelectedGroup)) {
-
-                    return selectAndRecord(group);
+                    return group;
                 }
             }
         }
 
-        /*
-         * Continue with the previous group if
-         * it is still eligible.
-         */
         if (groups.contains(lastSelectedGroup)) {
+            return lastSelectedGroup;
+        }
 
-            return selectAndRecord(
-                    lastSelectedGroup
+        return groups.get(0);
+    }
+
+    public synchronized void recordSelection(String group) {
+
+        if (group == null) {
+            throw new IllegalArgumentException(
+                    "Selected group cannot be null."
             );
         }
 
-        /*
-         * Previous group disappeared.
-         * Select the first deterministic group.
-         */
-        return selectAndRecord(
-                groups.get(0)
-        );
-    }
-
-    private String selectAndRecord(
-            String group) {
-
         if (group.equals(lastSelectedGroup)) {
-
             consecutiveCount++;
-
         } else {
-
             lastSelectedGroup = group;
             consecutiveCount = 1;
         }
-
-        return group;
     }
 }
