@@ -1,8 +1,6 @@
 package com.chronos.model;
 
 import jakarta.persistence.*;
-
-import com.chronos.model.ExecutionStatus;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,6 +19,13 @@ public class Execution {
     private LocalDateTime startedAt;
 
     private LocalDateTime finishedAt;
+
+    // Retry metadata
+    private int attemptNumber;
+
+    private int maxRetries;
+
+    private String failureReason;
 
     public Execution() {
     }
@@ -59,6 +64,18 @@ public class Execution {
         return finishedAt;
     }
 
+    public int getAttemptNumber() {
+        return attemptNumber;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -77,5 +94,17 @@ public class Execution {
 
     public void setFinishedAt(LocalDateTime finishedAt) {
         this.finishedAt = finishedAt;
+    }
+
+    public void setAttemptNumber(int attemptNumber) {
+        this.attemptNumber = attemptNumber;
+    }
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
+    public void setFailureReason(String failureReason) {
+        this.failureReason = failureReason;
     }
 }

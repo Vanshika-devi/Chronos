@@ -9,6 +9,7 @@ import com.chronos.repository.ExecutionRepository;
 import com.chronos.repository.JobRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.chronos.exception.ExecutionNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,7 +49,7 @@ public class ExecutionService {
         Execution execution =
                 executionRepository.findById(executionId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ExecutionNotFoundException(
                                         "Execution not found: "
                                                 + executionId
                                 )
@@ -85,7 +86,7 @@ public class ExecutionService {
         Execution execution =
                 executionRepository.findById(executionId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ExecutionNotFoundException(
                                         "Execution not found: "
                                                 + executionId
                                 )
@@ -122,7 +123,7 @@ public class ExecutionService {
         Execution execution =
                 executionRepository.findById(executionId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ExecutionNotFoundException(
                                         "Execution not found: "
                                                 + executionId
                                 )

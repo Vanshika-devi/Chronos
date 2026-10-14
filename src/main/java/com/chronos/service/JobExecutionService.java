@@ -133,9 +133,9 @@ public class JobExecutionService {
             Long executionId) {
 
         /*
-         * Verify that the job still exists.
+         * Verify that the job exists.
          */
-        jobRepository.findById(jobId)
+        Job job = jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
                                 "Job not found: " + jobId
@@ -143,22 +143,49 @@ public class JobExecutionService {
                 );
 
         /*
-         * Verify that the execution still exists.
+         * Verify that the execution exists.
          */
-        executionRepository.findById(executionId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Execution not found: "
-                                        + executionId
-                        )
-                );
+        Execution execution =
+                executionRepository.findById(executionId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Execution not found: "
+                                                + executionId
+                                )
+                        );
 
         /*
-         * Submit the execution to the worker pool.
+         * Verify that the execution actually
+         * belongs to this job.
+         */
+        if (!job.getId().equals(execution.getJobId())) {
+
+            throw new IllegalStateException(
+                    "Execution " + executionId
+                            + " does not belong to job "
+                            + jobId
+            );
+        }
+
+        /*
+         * Only dispatch a QUEUED execution.
+         */
+        if (execution.getStatus()
+                != ExecutionStatus.QUEUED) {
+
+            throw new IllegalStateException(
+                    "Execution " + executionId
+                            + " is not QUEUED. Current status: "
+                            + execution.getStatus()
+            );
+        }
+
+        /*
+         * Submit to worker pool.
          */
         workerPool.submit(
-                jobId,
-                executionId
+                job.getId(),
+                execution.getId()
         );
     }
 }
