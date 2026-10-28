@@ -1,36 +1,40 @@
 package com.chronos.worker;
 
+import com.chronos.scheduler.JobExecutor;
+import com.chronos.scheduler.ScheduledJob;
 import com.chronos.service.ExecutionService;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class WorkerPool {
 
     private final ExecutorService executorService;
     private final ExecutionService executionService;
+    private final JobExecutor jobExecutor;
 
     public WorkerPool(
-            ExecutionService executionService) {
+            ExecutionService executionService,
+            JobExecutor jobExecutor) {
 
         this.executionService = executionService;
+        this.jobExecutor = jobExecutor;
 
         this.executorService =
                 Executors.newFixedThreadPool(3);
     }
 
-    public void submit(
-            Long jobId,
-            Long executionId) {
+    public void submit(ScheduledJob scheduledJob) {
 
         JobTask task =
                 new JobTask(
-                        jobId,
-                        executionId,
-                        executionService
+                        scheduledJob,
+                        executionService,
+                        jobExecutor
                 );
 
         try {
@@ -40,7 +44,7 @@ public class WorkerPool {
         } catch (RejectedExecutionException e) {
 
             System.err.println(
-                    "Job " + jobId
+                    "Job " + scheduledJob.getJobId()
                             + " was rejected because "
                             + "the worker pool is shutting down."
             );
@@ -61,7 +65,7 @@ public class WorkerPool {
 
             if (!executorService.awaitTermination(
                     10,
-                    java.util.concurrent.TimeUnit.SECONDS)) {
+                    TimeUnit.SECONDS)) {
 
                 System.out.println(
                         "Workers did not finish within "
@@ -69,7 +73,6 @@ public class WorkerPool {
                 );
 
                 executorService.shutdownNow();
-
             }
 
         } catch (InterruptedException e) {

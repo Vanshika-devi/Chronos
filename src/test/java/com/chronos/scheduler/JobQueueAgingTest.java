@@ -1,11 +1,15 @@
 package com.chronos.scheduler;
-
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -208,5 +212,117 @@ class JobQueueAgingTest {
 
         // The actual selection should still be B.
         assertEquals(4L, queue.take().getJobId());
+    }
+    @Test
+    void emptyQueueShouldReturnNullOnPeek() {
+        TestClock clock = new TestClock(
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        JobQueue queue = createQueue(clock);
+
+        assertEquals(null, queue.peek());
+    }
+
+    @Test
+    void emptyQueueShouldReportIsEmpty() {
+        TestClock clock = new TestClock(
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        JobQueue queue = createQueue(clock);
+
+        assertEquals(true, queue.isEmpty());
+        assertEquals(0, queue.size());
+    }
+
+    @Test
+    void addingJobShouldIncreaseQueueSize() {
+        TestClock clock = new TestClock(
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        JobQueue queue = createQueue(clock);
+
+        assertEquals(0, queue.size());
+
+        queue.add(createJob(
+                1L, 1L, 5, 1L, "A"
+        ));
+
+        assertEquals(1, queue.size());
+        assertEquals(false, queue.isEmpty());
+    }
+
+    @Test
+    void takingJobShouldRemoveItFromQueue() throws Exception {
+        TestClock clock = new TestClock(
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        JobQueue queue = createQueue(clock);
+
+        queue.add(createJob(
+                1L, 1L, 5, 1L, "A"
+        ));
+
+        assertEquals(1, queue.size());
+
+        assertEquals(1L, queue.take().getJobId());
+
+        assertEquals(0, queue.size());
+        assertEquals(true, queue.isEmpty());
+    }
+
+    @Test
+    void addingNullJobShouldBeRejected() {
+        TestClock clock = new TestClock(
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        JobQueue queue = createQueue(clock);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> queue.add(null)
+        );
+
+        assertEquals(0, queue.size());
+    }
+
+    @Test
+    void takeShouldWaitUntilJobIsAdded() throws Exception {
+        TestClock clock = new TestClock(
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        JobQueue queue = createQueue(clock);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        try {
+            Future<ScheduledJob> future = executor.submit(queue::take);
+
+            // Give the take() thread a moment to enter the waiting state.
+            Thread.sleep(100);
+
+            assertEquals(false, future.isDone());
+
+            queue.add(createJob(
+                    1L,
+                    1L,
+                    5,
+                    1L,
+                    "A"
+            ));
+
+            ScheduledJob result =
+                    future.get(1, TimeUnit.SECONDS);
+
+            assertEquals(1L, result.getJobId());
+
+        } finally {
+            executor.shutdownNow();
+        }
     }
 }

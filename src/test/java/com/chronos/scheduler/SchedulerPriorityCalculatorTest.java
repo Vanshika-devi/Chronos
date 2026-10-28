@@ -113,4 +113,82 @@ class SchedulerPriorityCalculatorTest {
                 effectivePriority
         );
     }
+    @Test
+    void noWaitingTimeShouldKeepOriginalPriority() {
+        Instant now = Instant.parse(
+                "2026-10-06T18:00:00Z"
+        );
+
+        Clock clock = Clock.fixed(
+                now,
+                ZoneOffset.UTC
+        );
+
+        AgingPolicy agingPolicy = new AgingPolicy(
+                true,
+                100,
+                5
+        );
+
+        SchedulerPriorityCalculator calculator =
+                new SchedulerPriorityCalculator(
+                        agingPolicy,
+                        clock
+                );
+
+        ScheduledJob job = new ScheduledJob(
+                1L,
+                101L,
+                5,
+                1L,
+                "DEFAULT"
+        );
+
+        job.markQueued(now);
+
+        assertEquals(
+                5,
+                calculator.calculateEffectivePriority(job)
+        );
+    }
+    @Test
+    void disabledAgingShouldKeepOriginalPriority() {
+        Instant queuedAt = Instant.parse(
+                "2026-10-06T18:00:00Z"
+        );
+
+        Instant later = queuedAt.plusSeconds(100);
+
+        Clock clock = Clock.fixed(
+                later,
+                ZoneOffset.UTC
+        );
+
+        AgingPolicy agingPolicy = new AgingPolicy(
+                false,
+                100,
+                5
+        );
+
+        SchedulerPriorityCalculator calculator =
+                new SchedulerPriorityCalculator(
+                        agingPolicy,
+                        clock
+                );
+
+        ScheduledJob job = new ScheduledJob(
+                1L,
+                101L,
+                3,
+                1L,
+                "DEFAULT"
+        );
+
+        job.markQueued(queuedAt);
+
+        assertEquals(
+                3,
+                calculator.calculateEffectivePriority(job)
+        );
+    }
 }

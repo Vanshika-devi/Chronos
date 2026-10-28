@@ -1,70 +1,94 @@
 package com.chronos.worker;
 
+import com.chronos.scheduler.JobExecutor;
+import com.chronos.scheduler.ScheduledJob;
 import com.chronos.service.ExecutionService;
 
 public class JobTask implements Runnable {
 
-    private final Long jobId;
-    private final Long executionId;
+    private final ScheduledJob scheduledJob;
     private final ExecutionService executionService;
+    private final JobExecutor jobExecutor;
 
     public JobTask(
-            Long jobId,
-            Long executionId,
-            ExecutionService executionService) {
+            ScheduledJob scheduledJob,
+            ExecutionService executionService,
+            JobExecutor jobExecutor) {
 
-        this.jobId = jobId;
-        this.executionId = executionId;
+        this.scheduledJob = scheduledJob;
         this.executionService = executionService;
+        this.jobExecutor = jobExecutor;
     }
 
     @Override
     public void run() {
 
-        String threadName =
+        Long jobId = scheduledJob.getJobId();
+        Long executionId = scheduledJob.getExecutionId();
+
+        String workerName =
                 Thread.currentThread().getName();
 
         System.out.println(
-                "Worker " + threadName
-                        + " started Job "
-                        + jobId
+                "Worker " + workerName
+                        + " started Job " + jobId
         );
 
         try {
 
+            /*
+             * QUEUED → RUNNING
+             */
             executionService.markRunning(
                     jobId,
                     executionId
             );
 
-            // Temporary simulation
-            Thread.sleep(2000);
+            /*
+             * Actual job execution.
+             */
+            jobExecutor.execute(scheduledJob);
 
+            /*
+             * RUNNING → COMPLETED
+             */
             executionService.markCompleted(
                     jobId,
                     executionId
             );
 
             System.out.println(
-                    "Worker " + threadName
-                            + " completed Job "
-                            + jobId
+                    "Worker " + workerName
+                            + " completed Job " + jobId
             );
 
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
 
-            Thread.currentThread().interrupt();
-
-            executionService.markFailed(
-                    jobId,
-                    executionId
+            System.err.println(
+                    "Worker " + workerName
+                            + " failed Job " + jobId
+                            + ": " + e.getMessage()
             );
 
-            System.out.println(
-                    "Worker " + threadName
-                            + " interrupted Job "
-                            + jobId
-            );
+            try {
+
+                /*
+                 * RUNNING → FAILED
+                 */
+                executionService.markFailed(
+                        jobId,
+                        executionId
+                );
+
+            } catch (Exception statusException) {
+
+                System.err.println(
+                        "Failed to mark Job "
+                                + jobId
+                                + " as FAILED: "
+                                + statusException.getMessage()
+                );
+            }
         }
     }
 }

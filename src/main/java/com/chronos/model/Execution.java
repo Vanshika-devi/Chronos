@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import com.chronos.model.ExecutionStatus;
 import java.time.LocalDateTime;
+import com.chronos.model.Job;
 
 @Entity
 @Table(name = "executions")
@@ -13,7 +14,9 @@ public class Execution {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long jobId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "job_id", nullable = false)
+    private Job job;
 
     @Enumerated(EnumType.STRING)
     private ExecutionStatus status;
@@ -27,13 +30,13 @@ public class Execution {
 
     public Execution(
             Long id,
-            Long jobId,
+            Job job,
             ExecutionStatus status,
             LocalDateTime startedAt,
             LocalDateTime finishedAt) {
 
         this.id = id;
-        this.jobId = jobId;
+        this.job = job;
         this.status = status;
         this.startedAt = startedAt;
         this.finishedAt = finishedAt;
@@ -43,8 +46,8 @@ public class Execution {
         return id;
     }
 
-    public Long getJobId() {
-        return jobId;
+    public Job getJob() {
+        return job;
     }
 
     public ExecutionStatus getStatus() {
@@ -63,8 +66,8 @@ public class Execution {
         this.id = id;
     }
 
-    public void setJobId(Long jobId) {
-        this.jobId = jobId;
+    public void setJob(Job job) {
+        this.job = job;
     }
 
     public void setStatus(ExecutionStatus status) {

@@ -11,6 +11,7 @@ import com.chronos.scheduler.JobQueue;
 import com.chronos.scheduler.ScheduledJob;
 import com.chronos.scheduler.SequenceGenerator;
 import com.chronos.worker.WorkerPool;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -42,9 +43,6 @@ public class JobExecutionService {
     @Transactional
     public Execution queueJob(Long jobId) {
 
-        /*
-         * Find the job in the database.
-         */
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
@@ -52,38 +50,25 @@ public class JobExecutionService {
                         )
                 );
 
-        /*
-         * Mark the job as QUEUED.
-         */
         job.setStatus(JobStatus.QUEUED);
 
         jobRepository.save(job);
 
-        /*
-         * Create an execution record.
-         */
         Execution execution = new Execution();
 
-        execution.setJobId(job.getId());
-        execution.setStatus(ExecutionStatus.QUEUED);
+        execution.setJob(job);
+        execution.setStatus(
+                ExecutionStatus.QUEUED
+        );
         execution.setStartedAt(null);
+        execution.setFinishedAt(null);
 
         Execution savedExecution =
                 executionRepository.save(execution);
 
-        /*
-         * Generate the ordering number.
-         *
-         * This is used when two jobs have
-         * the same effective priority.
-         */
         long sequenceNumber =
                 sequenceGenerator.next();
 
-        /*
-         * Create the object that will enter
-         * the scheduler queue.
-         */
         ScheduledJob scheduledJob =
                 new ScheduledJob(
                         job.getId(),
@@ -93,15 +78,6 @@ public class JobExecutionService {
                         "DEFAULT"
                 );
 
-        /*
-         * IMPORTANT:
-         *
-         * Do not put the job into the queue until
-         * the database transaction has committed.
-         *
-         * Otherwise the scheduler could consume the
-         * job before the Execution row exists in the DB.
-         */
         TransactionSynchronizationManager
                 .registerSynchronization(
                         new TransactionSynchronization() {
@@ -109,7 +85,9 @@ public class JobExecutionService {
                             @Override
                             public void afterCommit() {
 
-                                jobQueue.add(scheduledJob);
+                                jobQueue.add(
+                                        scheduledJob
+                                );
 
                                 System.out.println(
                                         "Job "
@@ -129,12 +107,14 @@ public class JobExecutionService {
     }
 
     public void dispatchJob(
-            Long jobId,
-            Long executionId) {
+            ScheduledJob scheduledJob) {
 
-        /*
-         * Verify that the job still exists.
-         */
+        Long jobId =
+                scheduledJob.getJobId();
+
+        Long executionId =
+                scheduledJob.getExecutionId();
+
         jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
@@ -142,9 +122,6 @@ public class JobExecutionService {
                         )
                 );
 
-        /*
-         * Verify that the execution still exists.
-         */
         executionRepository.findById(executionId)
                 .orElseThrow(() ->
                         new RuntimeException(
@@ -153,12 +130,8 @@ public class JobExecutionService {
                         )
                 );
 
-        /*
-         * Submit the execution to the worker pool.
-         */
         workerPool.submit(
-                jobId,
-                executionId
+                scheduledJob
         );
     }
 }

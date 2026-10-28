@@ -59,8 +59,7 @@ public class SchedulerService {
                 );
 
                 jobExecutionService.dispatchJob(
-                        scheduledJob.getJobId(),
-                        scheduledJob.getExecutionId()
+                        scheduledJob
                 );
 
             } catch (InterruptedException e) {
