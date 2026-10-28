@@ -36,22 +36,16 @@ public class JobTask implements Runnable {
 
         try {
 
-            /*
-             * QUEUED → RUNNING
-             */
+            // QUEUED → RUNNING
             executionService.markRunning(
                     jobId,
                     executionId
             );
 
-            /*
-             * Actual job execution.
-             */
+            // Execute actual job
             jobExecutor.execute(scheduledJob);
 
-            /*
-             * RUNNING → COMPLETED
-             */
+            // RUNNING → COMPLETED
             executionService.markCompleted(
                     jobId,
                     executionId
@@ -72,9 +66,7 @@ public class JobTask implements Runnable {
 
             try {
 
-                /*
-                 * RUNNING → FAILED
-                 */
+                // RUNNING → FAILED
                 executionService.markFailed(
                         jobId,
                         executionId

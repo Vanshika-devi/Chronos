@@ -78,7 +78,6 @@ public class WorkerPool {
         } catch (InterruptedException e) {
 
             Thread.currentThread().interrupt();
-
             executorService.shutdownNow();
         }
 

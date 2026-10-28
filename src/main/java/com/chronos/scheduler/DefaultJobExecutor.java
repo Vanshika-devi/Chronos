@@ -9,11 +9,10 @@ public class DefaultJobExecutor implements JobExecutor {
     public void execute(ScheduledJob job) throws Exception {
 
         System.out.println(
-                "Executing Job " + job.getJobId()
-                        + " | Execution " + job.getExecutionId()
+                "Executing Job "
+                        + job.getJobId()
+                        + " | Execution "
+                        + job.getExecutionId()
         );
-
-        // Temporary execution simulation.
-        // Real job logic will be added later.
     }
 }

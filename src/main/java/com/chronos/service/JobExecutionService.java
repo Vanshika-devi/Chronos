@@ -106,14 +106,10 @@ public class JobExecutionService {
         return savedExecution;
     }
 
-    public void dispatchJob(
-            ScheduledJob scheduledJob) {
+    public void dispatchJob(ScheduledJob scheduledJob) {
 
-        Long jobId =
-                scheduledJob.getJobId();
-
-        Long executionId =
-                scheduledJob.getExecutionId();
+        Long jobId = scheduledJob.getJobId();
+        Long executionId = scheduledJob.getExecutionId();
 
         jobRepository.findById(jobId)
                 .orElseThrow(() ->
@@ -130,8 +126,6 @@ public class JobExecutionService {
                         )
                 );
 
-        workerPool.submit(
-                scheduledJob
-        );
+        workerPool.submit(scheduledJob);
     }
 }
