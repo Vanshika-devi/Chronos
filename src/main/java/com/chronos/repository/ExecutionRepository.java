@@ -1,3 +1,4 @@
+
 package com.chronos.repository;
 
 import com.chronos.model.Execution;
@@ -8,5 +9,5 @@ import java.util.List;
 public interface ExecutionRepository
         extends JpaRepository<Execution, Long> {
 
-    List<Execution> findByJobId(Long jobId);
+    List<Execution> findByJob_Id(Long jobId);
 }

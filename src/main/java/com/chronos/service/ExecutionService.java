@@ -1,3 +1,4 @@
+
 package com.chronos.service;
 
 import com.chronos.exception.JobNotFoundException;
@@ -7,6 +8,7 @@ import com.chronos.model.Job;
 import com.chronos.model.JobStatus;
 import com.chronos.repository.ExecutionRepository;
 import com.chronos.repository.JobRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,126 +23,121 @@ public class ExecutionService {
 
     public ExecutionService(
             ExecutionRepository executionRepository,
-            JobRepository jobRepository) {
-
+            JobRepository jobRepository
+    ) {
         this.executionRepository = executionRepository;
         this.jobRepository = jobRepository;
     }
 
-    public List<Execution> getExecutionsForJob(
-            Long jobId) {
-
-        return executionRepository.findByJobId(jobId);
+    public List<Execution> getExecutionsForJob(Long jobId) {
+        return executionRepository.findByJob_Id(jobId);
     }
 
     @Transactional
-    public void markRunning(
-            Long jobId,
-            Long executionId) {
+    public void markRunning(Long jobId, Long executionId) {
 
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() ->
-                        new JobNotFoundException(
-                                "Job not found: " + jobId
-                        )
-                );
+        Job job = findJob(jobId);
+        Execution execution = findExecution(jobId, executionId);
 
-        Execution execution =
-                executionRepository.findById(executionId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Execution not found: "
-                                                + executionId
-                                )
-                        );
+        execution.setStatus(ExecutionStatus.RUNNING);
+        execution.setStartedAt(LocalDateTime.now());
 
-        execution.setStatus(
-                ExecutionStatus.RUNNING
-        );
-
-        execution.setStartedAt(
-                LocalDateTime.now()
-        );
-
-        job.setStatus(
-                JobStatus.RUNNING
-        );
+        job.setStatus(JobStatus.RUNNING);
 
         executionRepository.save(execution);
         jobRepository.save(job);
     }
 
     @Transactional
-    public void markCompleted(
-            Long jobId,
-            Long executionId) {
+    public void markCompleted(Long jobId, Long executionId) {
 
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() ->
-                        new JobNotFoundException(
-                                "Job not found: " + jobId
-                        )
-                );
+        Job job = findJob(jobId);
+        Execution execution = findExecution(jobId, executionId);
 
-        Execution execution =
-                executionRepository.findById(executionId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Execution not found: "
-                                                + executionId
-                                )
-                        );
+        execution.setStatus(ExecutionStatus.COMPLETED);
+        execution.setFinishedAt(LocalDateTime.now());
+        execution.setFailureReason(null);
 
-        execution.setStatus(
-                ExecutionStatus.COMPLETED
-        );
-
-        execution.setFinishedAt(
-                LocalDateTime.now()
-        );
-
-        job.setStatus(
-                JobStatus.COMPLETED
-        );
+        job.setStatus(JobStatus.COMPLETED);
 
         executionRepository.save(execution);
         jobRepository.save(job);
     }
 
+    // Backward-compatible method
+    @Transactional
+    public void markFailed(Long jobId, Long executionId) {
+
+        markFailedInternal(jobId, executionId, null);
+    }
+
+    // New method: stores the actual failure reason
     @Transactional
     public void markFailed(
             Long jobId,
-            Long executionId) {
+            Long executionId,
+            String failureReason
+    ) {
 
-        Job job = jobRepository.findById(jobId)
+        markFailedInternal(
+                jobId,
+                executionId,
+                failureReason
+        );
+    }
+
+    private void markFailedInternal(
+            Long jobId,
+            Long executionId,
+            String failureReason
+    ) {
+
+        Job job = findJob(jobId);
+        Execution execution = findExecution(jobId, executionId);
+
+        execution.setStatus(ExecutionStatus.FAILED);
+        execution.setFinishedAt(LocalDateTime.now());
+
+        execution.setFailureReason(
+                failureReason == null
+                        ? "Unknown execution failure"
+                        : failureReason
+        );
+
+        job.setStatus(JobStatus.FAILED);
+
+        executionRepository.save(execution);
+        jobRepository.save(job);
+    }
+
+    private Job findJob(Long jobId) {
+
+        return jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
                                 "Job not found: " + jobId
                         )
                 );
+    }
 
-        Execution execution =
-                executionRepository.findById(executionId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Execution not found: "
-                                                + executionId
-                                )
-                        );
+    private Execution findExecution(
+            Long jobId,
+            Long executionId
+    ) {
 
-        execution.setStatus(
-                ExecutionStatus.FAILED
-        );
+        Execution execution = executionRepository.findById(executionId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Execution not found: " + executionId
+                        )
+                );
 
-        execution.setFinishedAt(
-                LocalDateTime.now()
-        );
+        if (!execution.getJob().getId().equals(jobId)) {
+            throw new IllegalArgumentException(
+                    "Execution does not belong to Job " + jobId
+            );
+        }
 
-        job.setStatus(
-                JobStatus.FAILED
-        );
-
-        executionRepository.save(execution);
-        jobRepository.save(job);
+        return execution;
     }
 }

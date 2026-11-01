@@ -4,11 +4,13 @@ package com.chronos.scheduler;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -31,18 +33,42 @@ public class JobQueue {
     public JobQueue(
             SchedulerPriorityCalculator priorityCalculator,
             FairnessPolicy fairnessPolicy,
-            Clock clock) {
+            Clock clock
+    ) {
 
-        this.priorityCalculator =
-                priorityCalculator;
-
-        this.fairnessPolicy =
-                fairnessPolicy;
-
+        this.priorityCalculator = priorityCalculator;
+        this.fairnessPolicy = fairnessPolicy;
         this.clock = clock;
     }
 
+    // Add a job that is immediately eligible.
     public void add(ScheduledJob scheduledJob) {
+
+        enqueue(scheduledJob, Instant.now(clock));
+    }
+
+    // Add a job that becomes eligible after a delay.
+    public void addDelayed(
+            ScheduledJob scheduledJob,
+            Duration delay
+    ) {
+
+        if (delay == null || delay.isNegative()) {
+            throw new IllegalArgumentException(
+                    "Delay cannot be null or negative."
+            );
+        }
+
+        Instant availableAt =
+                Instant.now(clock).plus(delay);
+
+        enqueue(scheduledJob, availableAt);
+    }
+
+    private void enqueue(
+            ScheduledJob scheduledJob,
+            Instant availableAt
+    ) {
 
         if (scheduledJob == null) {
             throw new IllegalArgumentException(
@@ -50,23 +76,25 @@ public class JobQueue {
             );
         }
 
-        Instant queuedAt =
-                Instant.now(clock);
+        Instant queuedAt = Instant.now(clock);
 
         scheduledJob.markQueued(queuedAt);
+        scheduledJob.markAvailableAt(availableAt);
 
         lock.lock();
 
         try {
+
             jobs.add(scheduledJob);
 
-            notEmpty.signal();
+            // Wake scheduler in case this job is
+            // available earlier than its current wait.
+            notEmpty.signalAll();
 
         } finally {
             lock.unlock();
         }
     }
-
 
     public ScheduledJob take() throws InterruptedException {
 
@@ -74,42 +102,71 @@ public class JobQueue {
 
         try {
 
-            while (jobs.isEmpty()) {
-                notEmpty.await();
+            while (true) {
+
+                if (jobs.isEmpty()) {
+                    notEmpty.await();
+                    continue;
+                }
+
+                Instant now = Instant.now(clock);
+
+                int bestIndex =
+                        findBestJobIndex(false, now);
+
+                // An eligible job was found.
+                if (bestIndex >= 0) {
+
+                    ScheduledJob selectedJob =
+                            jobs.remove(bestIndex);
+
+                    fairnessPolicy.recordSelection(
+                            selectedJob.getSchedulingGroup()
+                    );
+
+                    return selectedJob;
+                }
+
+                // No job is currently eligible.
+                // Wait until the earliest job becomes available.
+                Instant nextAvailableAt =
+                        findNextAvailableTime();
+
+                long waitNanos;
+
+                try {
+
+                    waitNanos = Duration.between(
+                            now,
+                            nextAvailableAt
+                    ).toNanos();
+
+                } catch (ArithmeticException e) {
+
+                    waitNanos = Long.MAX_VALUE;
+                }
+
+                if (waitNanos > 0) {
+                    notEmpty.awaitNanos(waitNanos);
+                }
             }
-
-            int bestIndex = findBestJobIndex(false);
-
-            ScheduledJob selectedJob = jobs.get(bestIndex);
-
-            jobs.remove(bestIndex);
-
-            fairnessPolicy.recordSelection(
-                    selectedJob.getSchedulingGroup()
-            );
-
-            return selectedJob;
 
         } finally {
             lock.unlock();
         }
     }
 
-
     public ScheduledJob peek() {
 
         lock.lock();
 
         try {
+
             if (jobs.isEmpty()) {
                 return null;
             }
 
-            // Preview must not advance fairness state.
-            int bestIndex =
-                    findBestJobIndex(false);
-
-            return jobs.get(bestIndex);
+            return getBestAvailableJob();
 
         } finally {
             lock.unlock();
@@ -122,7 +179,6 @@ public class JobQueue {
 
         try {
             return jobs.isEmpty();
-
         } finally {
             lock.unlock();
         }
@@ -134,20 +190,67 @@ public class JobQueue {
 
         try {
             return jobs.size();
-
         } finally {
             lock.unlock();
         }
     }
 
+    private ScheduledJob getBestAvailableJob() {
+
+        int bestIndex = findBestJobIndex(
+                false,
+                Instant.now(clock)
+        );
+
+        return bestIndex == -1
+                ? null
+                : jobs.get(bestIndex);
+    }
+
+    private Instant findNextAvailableTime() {
+
+        Instant earliest = null;
+
+        for (ScheduledJob job : jobs) {
+
+            Instant availableAt =
+                    job.getAvailableAt();
+
+            if (earliest == null
+                    || availableAt.isBefore(earliest)) {
+
+                earliest = availableAt;
+            }
+        }
+
+        return earliest;
+    }
+
     private int findBestJobIndex(
-            boolean recordFairnessSelection) {
+            boolean recordFairnessSelection,
+            Instant now
+    ) {
+
+        List<ScheduledJob> eligibleJobs =
+                new ArrayList<>();
+
+        for (ScheduledJob job : jobs) {
+
+            if (!job.getAvailableAt().isAfter(now)) {
+                eligibleJobs.add(job);
+            }
+        }
+
+        if (eligibleJobs.isEmpty()) {
+            return -1;
+        }
 
         int highestEffectivePriority =
-                findHighestEffectivePriority();
+                findHighestEffectivePriority(eligibleJobs);
 
         List<ScheduledJob> candidates =
                 findCandidates(
+                        eligibleJobs,
                         highestEffectivePriority
                 );
 
@@ -155,6 +258,7 @@ public class JobQueue {
                 new HashSet<>();
 
         for (ScheduledJob job : candidates) {
+
             eligibleGroupSet.add(
                     job.getSchedulingGroup()
             );
@@ -166,10 +270,10 @@ public class JobQueue {
         String selectedGroup =
                 recordFairnessSelection
                         ? fairnessPolicy.selectGroup(
-                        new ArrayList<>(eligibleGroupSet)
+                        new ArrayList<>(eligibleGroups)
                 )
                         : fairnessPolicy.previewGroup(
-                        new ArrayList<>(eligibleGroupSet)
+                        new ArrayList<>(eligibleGroups)
                 );
 
         return findBestJobInGroup(
@@ -178,16 +282,16 @@ public class JobQueue {
         );
     }
 
-    private int findHighestEffectivePriority() {
+    private int findHighestEffectivePriority(
+            List<ScheduledJob> eligibleJobs
+    ) {
 
-        int highestPriority =
-                Integer.MIN_VALUE;
+        int highestPriority = Integer.MIN_VALUE;
 
-        for (ScheduledJob job : jobs) {
+        for (ScheduledJob job : eligibleJobs) {
 
             int effectivePriority =
-                    priorityCalculator
-                            .calculateEffectivePriority(job);
+                    priorityCalculator.calculateEffectivePriority(job);
 
             if (effectivePriority > highestPriority) {
                 highestPriority = effectivePriority;
@@ -198,20 +302,19 @@ public class JobQueue {
     }
 
     private List<ScheduledJob> findCandidates(
-            int highestEffectivePriority) {
+            List<ScheduledJob> eligibleJobs,
+            int highestEffectivePriority
+    ) {
 
         List<ScheduledJob> candidates =
                 new ArrayList<>();
 
-        for (ScheduledJob job : jobs) {
+        for (ScheduledJob job : eligibleJobs) {
 
             int effectivePriority =
-                    priorityCalculator
-                            .calculateEffectivePriority(job);
+                    priorityCalculator.calculateEffectivePriority(job);
 
-            if (effectivePriority
-                    == highestEffectivePriority) {
-
+            if (effectivePriority == highestEffectivePriority) {
                 candidates.add(job);
             }
         }
@@ -221,7 +324,8 @@ public class JobQueue {
 
     private int findBestJobInGroup(
             List<ScheduledJob> candidates,
-            String selectedGroup) {
+            String selectedGroup
+    ) {
 
         int bestIndex = -1;
 
@@ -232,8 +336,7 @@ public class JobQueue {
                 continue;
             }
 
-            int currentIndex =
-                    jobs.indexOf(job);
+            int currentIndex = jobs.indexOf(job);
 
             if (bestIndex == -1) {
                 bestIndex = currentIndex;

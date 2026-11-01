@@ -13,13 +13,15 @@ public class ScheduledJob {
     private final String schedulingGroup;
 
     private Instant queuedAt;
+    private Instant availableAt = Instant.EPOCH;
 
     public ScheduledJob(
             Long jobId,
             Long executionId,
             int priority,
             long sequenceNumber,
-            String schedulingGroup) {
+            String schedulingGroup
+    ) {
 
         this.jobId = Objects.requireNonNull(
                 jobId,
@@ -79,6 +81,10 @@ public class ScheduledJob {
         return queuedAt;
     }
 
+    public Instant getAvailableAt() {
+        return availableAt;
+    }
+
     public void markQueued(Instant queuedAt) {
 
         if (queuedAt == null) {
@@ -88,5 +94,16 @@ public class ScheduledJob {
         }
 
         this.queuedAt = queuedAt;
+    }
+
+    public void markAvailableAt(Instant availableAt) {
+
+        if (availableAt == null) {
+            throw new IllegalArgumentException(
+                    "availableAt cannot be null."
+            );
+        }
+
+        this.availableAt = availableAt;
     }
 }
