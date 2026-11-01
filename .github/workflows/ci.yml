@@ -49,11 +49,11 @@ jobs:
 
       # Step 4: Make Maven wrapper executable
       - name: Make Maven wrapper executable
-        run: chmod +x mvn
+        run: chmod +x mvnw
 
       # Step 5: Build and execute all tests
       - name: Build and run tests
-        run: ./mvn -B clean verify
+        run: ./mvnw -B clean verify
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/chronos
           SPRING_DATASOURCE_USERNAME: postgres
