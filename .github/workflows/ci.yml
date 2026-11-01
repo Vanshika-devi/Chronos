@@ -45,10 +45,10 @@ jobs:
         run: java -version
 
       - name: Make Maven wrapper executable
-        run: chmod +x mvnw
+        run: chmod +x mvn
 
       - name: Build and run tests
-        run: ./mvnw -B clean verify
+        run: ./mvn -B clean verify
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/chronos
           SPRING_DATASOURCE_USERNAME: postgres
