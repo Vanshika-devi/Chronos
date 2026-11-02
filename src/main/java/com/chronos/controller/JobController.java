@@ -1,5 +1,6 @@
 package com.chronos.controller;
 
+import com.chronos.dto.ExecutionResponse;
 import com.chronos.dto.CreateJobRequest;
 import com.chronos.dto.UpdateJobRequest;
 import com.chronos.dto.UpdateJobStatusRequest;
@@ -77,10 +78,31 @@ public class JobController{
                 jobExecutionService.queueJob(id)
         );
     }
+
     @GetMapping("/{id}/executions")
-    public ResponseEntity<List<Execution>> getExecutions(@PathVariable Long id){
-        return ResponseEntity.ok(
+    public ResponseEntity<List<ExecutionResponse>> getExecutions(
+            @PathVariable Long id) {
+
+        List<ExecutionResponse> response =
                 executionService.getExecutionsForJob(id)
-        );
+                        .stream()
+                        .map(execution -> new ExecutionResponse(
+                                execution.getId(),
+                                execution.getJob().getId(),
+                                execution.getStatus().name(),
+                                execution.getAttemptNumber(),
+                                execution.getFailureReason(),
+                                execution.getStartedAt(),
+                                execution.getFinishedAt()
+                        ))
+                        .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancelJob(@PathVariable Long id) {
+        jobExecutionService.cancelQueuedJob(id);
+        return ResponseEntity.noContent().build();
     }
 }

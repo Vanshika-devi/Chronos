@@ -1,5 +1,5 @@
 package com.chronos.service;
-
+import java.util.List;
 import com.chronos.exception.JobNotFoundException;
 import com.chronos.model.Execution;
 import com.chronos.model.ExecutionStatus;
@@ -12,6 +12,8 @@ import com.chronos.scheduler.ScheduledJob;
 import com.chronos.scheduler.SequenceGenerator;
 import com.chronos.worker.WorkerPool;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -127,5 +129,51 @@ public class JobExecutionService {
                 );
 
         workerPool.submit(scheduledJob);
+    }
+
+    @Transactional
+    public void cancelQueuedJob(Long jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() ->
+                        new JobNotFoundException("Job not found: " + jobId)
+                );
+
+        if (job.getStatus() != JobStatus.QUEUED) {
+            throw new IllegalStateException(
+                    "Only queued jobs can be cancelled."
+            );
+        }
+
+        List<Execution> executions =
+                executionRepository.findByJob_Id(jobId);
+
+        Execution queuedExecution = executions.stream()
+                .filter(execution ->
+                        execution.getStatus() == ExecutionStatus.QUEUED)
+                .max(Comparator.comparingInt(Execution::getAttemptNumber))
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "No queued execution found for this job."
+                        )
+                );
+
+        queuedExecution.setStatus(ExecutionStatus.CANCELLED);
+        queuedExecution.setFinishedAt(LocalDateTime.now());
+
+        job.setStatus(JobStatus.CANCELLED);
+
+        executionRepository.save(queuedExecution);
+        jobRepository.save(job);
+
+        Long executionId = queuedExecution.getId();
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        jobQueue.remove(jobId, executionId);
+                    }
+                }
+        );
     }
 }

@@ -35,9 +35,23 @@ public class ExecutionService {
 
     @Transactional
     public void markRunning(Long jobId, Long executionId) {
-
         Job job = findJob(jobId);
-        Execution execution = findExecution(jobId, executionId);
+        Execution execution = findExecution(jobId,executionId);
+
+        if (!execution.getJob().getId().equals(jobId)) {
+            throw new IllegalStateException(
+                    "Execution does not belong to the specified job"
+            );
+        }
+
+        if (job.getStatus() != JobStatus.QUEUED
+                || execution.getStatus() != ExecutionStatus.QUEUED) {
+            throw new IllegalStateException(
+                    "Job or execution is no longer queued. "
+                            + "Job status: " + job.getStatus()
+                            + ", execution status: " + execution.getStatus()
+            );
+        }
 
         execution.setStatus(ExecutionStatus.RUNNING);
         execution.setStartedAt(LocalDateTime.now());
@@ -139,5 +153,31 @@ public class ExecutionService {
         }
 
         return execution;
+    }
+    @Transactional
+    public void markCancelled(Long jobId, Long executionId) {
+
+        Job job = findJob(jobId);
+        Execution execution = findExecution(jobId, executionId);
+
+        if (execution.getStatus() != ExecutionStatus.QUEUED) {
+            throw new IllegalStateException(
+                    "Only queued executions can be cancelled."
+            );
+        }
+
+        if (job.getStatus() != JobStatus.QUEUED) {
+            throw new IllegalStateException(
+                    "Only queued jobs can be cancelled."
+            );
+        }
+
+        execution.setStatus(ExecutionStatus.CANCELLED);
+        execution.setFinishedAt(LocalDateTime.now());
+
+        job.setStatus(JobStatus.CANCELLED);
+
+        executionRepository.save(execution);
+        jobRepository.save(job);
     }
 }

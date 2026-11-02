@@ -362,4 +362,31 @@ public class JobQueue {
 
         return bestIndex;
     }
+
+    public boolean remove(Long jobId, Long executionId) {
+
+        if (jobId == null || executionId == null) {
+            throw new IllegalArgumentException(
+                    "Job ID and Execution ID cannot be null."
+            );
+        }
+
+        lock.lock();
+
+        try {
+            boolean removed = jobs.removeIf(job ->
+                    job.getJobId().equals(jobId)
+                            && job.getExecutionId().equals(executionId)
+            );
+
+            if (removed) {
+                notEmpty.signalAll();
+            }
+
+            return removed;
+
+        } finally {
+            lock.unlock();
+        }
+    }
 }
