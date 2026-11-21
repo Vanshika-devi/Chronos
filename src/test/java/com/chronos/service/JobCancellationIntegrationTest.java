@@ -1,3 +1,4 @@
+
 package com.chronos.service;
 
 import com.chronos.model.Execution;
@@ -7,16 +8,17 @@ import com.chronos.model.JobStatus;
 import com.chronos.repository.ExecutionRepository;
 import com.chronos.repository.JobRepository;
 import com.chronos.scheduler.JobQueue;
+import com.chronos.scheduler.ScheduledJob;
+import com.chronos.scheduler.SchedulerService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Transactional
 class JobCancellationIntegrationTest {
 
     @Autowired
@@ -30,6 +32,10 @@ class JobCancellationIntegrationTest {
 
     @Autowired
     private JobQueue jobQueue;
+
+    // Prevent the background scheduler from consuming jobs in this test.
+    @MockBean
+    private SchedulerService schedulerService;
 
     @Test
     void shouldCancelQueuedJobAndExecution() {
@@ -46,10 +52,23 @@ class JobCancellationIntegrationTest {
 
         Long jobId = job.getId();
 
-        // Act: queue the job
+        // Act 1: queue the job
         jobExecutionService.queueJob(jobId);
 
-        // Cancel before the scheduler takes it
+        Execution execution = executionRepository
+                .findByJob_Id(jobId)
+                .stream()
+                .findFirst()
+                .orElseThrow();
+
+        // Verify that the afterCommit callback inserted the job.
+        ScheduledJob queuedJob = jobQueue.peek();
+
+        assertNotNull(queuedJob);
+        assertEquals(jobId, queuedJob.getJobId());
+        assertEquals(execution.getId(), queuedJob.getExecutionId());
+
+        // Act 2: cancel the queued job
         jobExecutionService.cancelQueuedJob(jobId);
 
         // Assert: job should be cancelled
@@ -62,20 +81,74 @@ class JobCancellationIntegrationTest {
         );
 
         // Assert: execution should be cancelled
-        Execution execution = executionRepository
+        Execution cancelledExecution = executionRepository
                 .findByJob_Id(jobId)
-                .get(0);
+                .stream()
+                .findFirst()
+                .orElseThrow();
 
         assertEquals(
                 ExecutionStatus.CANCELLED,
-                execution.getStatus()
+                cancelledExecution.getStatus()
         );
 
-        assertNotNull(execution.getFinishedAt());
+        assertNotNull(cancelledExecution.getFinishedAt());
 
-        // Assert: job should not remain in the queue
+        // Assert: cancelled item must no longer exist in the queue
         assertFalse(
                 jobQueue.remove(jobId, execution.getId())
         );
     }
+
+    @Autowired
+    private ExecutionService executionService;
+
+    @Test
+    void shouldPreventCancelledJobFromStarting() {
+
+        // Arrange
+        Job job = new Job(
+                null,
+                "Cancelled Execution Guard Test",
+                5,
+                JobStatus.CREATED
+        );
+
+        job = jobRepository.save(job);
+        Long jobId = job.getId();
+
+        jobExecutionService.queueJob(jobId);
+
+        Execution execution = executionRepository
+                .findByJob_Id(jobId)
+                .stream()
+                .findFirst()
+                .orElseThrow();
+
+        Long executionId = execution.getId();
+
+        // Cancel the queued job
+        jobExecutionService.cancelQueuedJob(jobId);
+
+        // Act + Assert
+        assertThrows(
+                IllegalStateException.class,
+                () -> executionService.markRunning(jobId, executionId)
+        );
+
+        // Verify it remains cancelled
+        Job cancelledJob = jobRepository.findById(jobId)
+                .orElseThrow();
+
+        Execution cancelledExecution = executionRepository
+                .findById(executionId)
+                .orElseThrow();
+
+        assertEquals(JobStatus.CANCELLED, cancelledJob.getStatus());
+        assertEquals(
+                ExecutionStatus.CANCELLED,
+                cancelledExecution.getStatus()
+        );
+    }
+
 }

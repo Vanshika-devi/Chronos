@@ -35,17 +35,15 @@ public class ExecutionService {
 
     @Transactional
     public void markRunning(Long jobId, Long executionId) {
-        Job job = findJob(jobId);
-        Execution execution = findExecution(jobId,executionId);
 
-        if (!execution.getJob().getId().equals(jobId)) {
-            throw new IllegalStateException(
-                    "Execution does not belong to the specified job"
-            );
-        }
+        // Always acquire the Job lock first.
+        Job job = findJobForUpdate(jobId);
+
+        Execution execution = findExecution(jobId, executionId);
 
         if (job.getStatus() != JobStatus.QUEUED
                 || execution.getStatus() != ExecutionStatus.QUEUED) {
+
             throw new IllegalStateException(
                     "Job or execution is no longer queued. "
                             + "Job status: " + job.getStatus()
@@ -65,8 +63,15 @@ public class ExecutionService {
     @Transactional
     public void markCompleted(Long jobId, Long executionId) {
 
-        Job job = findJob(jobId);
+        Job job = findJobForUpdate(jobId);
         Execution execution = findExecution(jobId, executionId);
+
+        if (job.getStatus() != JobStatus.RUNNING
+                || execution.getStatus() != ExecutionStatus.RUNNING) {
+            throw new IllegalStateException(
+                    "Only running jobs and executions can be completed."
+            );
+        }
 
         execution.setStatus(ExecutionStatus.COMPLETED);
         execution.setFinishedAt(LocalDateTime.now());
@@ -85,7 +90,7 @@ public class ExecutionService {
         markFailedInternal(jobId, executionId, null);
     }
 
-    // New method: stores the actual failure reason
+    // Stores the actual failure reason
     @Transactional
     public void markFailed(
             Long jobId,
@@ -106,8 +111,15 @@ public class ExecutionService {
             String failureReason
     ) {
 
-        Job job = findJob(jobId);
+        Job job = findJobForUpdate(jobId);
         Execution execution = findExecution(jobId, executionId);
+
+        if (job.getStatus() != JobStatus.RUNNING
+                || execution.getStatus() != ExecutionStatus.RUNNING) {
+            throw new IllegalStateException(
+                    "Only running jobs and executions can be marked failed."
+            );
+        }
 
         execution.setStatus(ExecutionStatus.FAILED);
         execution.setFinishedAt(LocalDateTime.now());
@@ -127,6 +139,16 @@ public class ExecutionService {
     private Job findJob(Long jobId) {
 
         return jobRepository.findById(jobId)
+                .orElseThrow(() ->
+                        new JobNotFoundException(
+                                "Job not found: " + jobId
+                        )
+                );
+    }
+
+    private Job findJobForUpdate(Long jobId) {
+
+        return jobRepository.findByIdForUpdate(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
                                 "Job not found: " + jobId
@@ -154,10 +176,12 @@ public class ExecutionService {
 
         return execution;
     }
+
     @Transactional
     public void markCancelled(Long jobId, Long executionId) {
 
-        Job job = findJob(jobId);
+        // Maintain the same lock order: Job first, Execution second.
+        Job job = findJobForUpdate(jobId);
         Execution execution = findExecution(jobId, executionId);
 
         if (execution.getStatus() != ExecutionStatus.QUEUED) {

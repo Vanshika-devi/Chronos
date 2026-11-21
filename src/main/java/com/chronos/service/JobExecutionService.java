@@ -1,5 +1,10 @@
+
 package com.chronos.service;
+
 import java.util.List;
+import java.util.Comparator;
+import java.time.LocalDateTime;
+
 import com.chronos.exception.JobNotFoundException;
 import com.chronos.model.Execution;
 import com.chronos.model.ExecutionStatus;
@@ -12,8 +17,6 @@ import com.chronos.scheduler.ScheduledJob;
 import com.chronos.scheduler.SequenceGenerator;
 import com.chronos.worker.WorkerPool;
 
-import java.time.LocalDateTime;
-import java.util.Comparator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -53,23 +56,18 @@ public class JobExecutionService {
                 );
 
         job.setStatus(JobStatus.QUEUED);
-
         jobRepository.save(job);
 
         Execution execution = new Execution();
-
         execution.setJob(job);
-        execution.setStatus(
-                ExecutionStatus.QUEUED
-        );
+        execution.setStatus(ExecutionStatus.QUEUED);
         execution.setStartedAt(null);
         execution.setFinishedAt(null);
 
         Execution savedExecution =
                 executionRepository.save(execution);
 
-        long sequenceNumber =
-                sequenceGenerator.next();
+        long sequenceNumber = sequenceGenerator.next();
 
         ScheduledJob scheduledJob =
                 new ScheduledJob(
@@ -80,30 +78,27 @@ public class JobExecutionService {
                         "DEFAULT"
                 );
 
-        TransactionSynchronizationManager
-                .registerSynchronization(
-                        new TransactionSynchronization() {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
 
-                            @Override
-                            public void afterCommit() {
+                    @Override
+                    public void afterCommit() {
 
-                                jobQueue.add(
-                                        scheduledJob
-                                );
+                        jobQueue.add(scheduledJob);
 
-                                System.out.println(
-                                        "Job "
-                                                + job.getId()
-                                                + " added to scheduler queue "
-                                                + "after transaction commit. "
-                                                + "Priority: "
-                                                + job.getPriority()
-                                                + ", Sequence: "
-                                                + sequenceNumber
-                                );
-                            }
-                        }
-                );
+                        System.out.println(
+                                "Job "
+                                        + job.getId()
+                                        + " added to scheduler queue "
+                                        + "after transaction commit. "
+                                        + "Priority: "
+                                        + job.getPriority()
+                                        + ", Sequence: "
+                                        + sequenceNumber
+                        );
+                    }
+                }
+        );
 
         return savedExecution;
     }
@@ -123,8 +118,7 @@ public class JobExecutionService {
         executionRepository.findById(executionId)
                 .orElseThrow(() ->
                         new RuntimeException(
-                                "Execution not found: "
-                                        + executionId
+                                "Execution not found: " + executionId
                         )
                 );
 
@@ -133,9 +127,13 @@ public class JobExecutionService {
 
     @Transactional
     public void cancelQueuedJob(Long jobId) {
-        Job job = jobRepository.findById(jobId)
+
+        // Acquire database write lock before checking job status.
+        Job job = jobRepository.findByIdForUpdate(jobId)
                 .orElseThrow(() ->
-                        new JobNotFoundException("Job not found: " + jobId)
+                        new JobNotFoundException(
+                                "Job not found: " + jobId
+                        )
                 );
 
         if (job.getStatus() != JobStatus.QUEUED) {
@@ -150,7 +148,9 @@ public class JobExecutionService {
         Execution queuedExecution = executions.stream()
                 .filter(execution ->
                         execution.getStatus() == ExecutionStatus.QUEUED)
-                .max(Comparator.comparingInt(Execution::getAttemptNumber))
+                .max(Comparator.comparingInt(
+                        Execution::getAttemptNumber
+                ))
                 .orElseThrow(() ->
                         new IllegalStateException(
                                 "No queued execution found for this job."
@@ -169,6 +169,7 @@ public class JobExecutionService {
 
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
+
                     @Override
                     public void afterCommit() {
                         jobQueue.remove(jobId, executionId);
