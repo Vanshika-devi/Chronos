@@ -884,16 +884,32 @@ cd chronos-distributed-scheduler
 
 ## Run
 
+Set the database password in the environment before starting Chronos. In
+PowerShell, run this in the same terminal (replace the placeholder locally):
+
+```powershell
+$env:DB_PASSWORD = "your-postgres-password"
+mvn spring-boot:run
+```
+
+Do not put the real password in `application.properties` or commit a local
+`.env` file. In Bash, set it in the terminal before starting the app:
+
+```bash
+export DB_PASSWORD="your-postgres-password"
+mvn spring-boot:run
+```
+
 Linux / macOS:
 
 ```bash
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 Windows:
 
 ```powershell
-mvnw.cmd spring-boot:run
+mvn spring-boot:run
 ```
 
 ---
