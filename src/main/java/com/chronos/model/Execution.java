@@ -6,7 +6,15 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "executions")
+@Table(
+        name = "executions",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_execution_job_idempotency",
+                        columnNames = {"job_id", "idempotency_key"}
+                )
+        }
+)
 public class Execution {
 
     @Id
@@ -29,6 +37,11 @@ public class Execution {
     private LocalDateTime startedAt;
 
     private LocalDateTime finishedAt;
+
+    // Identifies the original API request.
+    // Null for executions created by automatic retries.
+    @Column(name = "idempotency_key", length = 255)
+    private String idempotencyKey;
 
     public Execution() {
     }
@@ -127,5 +140,13 @@ public class Execution {
 
     public void setFinishedAt(LocalDateTime finishedAt) {
         this.finishedAt = finishedAt;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 }

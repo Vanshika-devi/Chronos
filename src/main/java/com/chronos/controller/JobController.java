@@ -1,9 +1,9 @@
+
 package com.chronos.controller;
 
-import com.chronos.dto.ExecutionResponse;
 import com.chronos.dto.CreateJobRequest;
+import com.chronos.dto.ExecutionResponse;
 import com.chronos.dto.UpdateJobRequest;
-import com.chronos.dto.UpdateJobStatusRequest;
 import com.chronos.model.Execution;
 import com.chronos.model.Job;
 import com.chronos.service.ExecutionService;
@@ -18,70 +18,95 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/jobs")
-public class JobController{
+public class JobController {
+
     private final JobService jobService;
     private final JobExecutionService jobExecutionService;
     private final ExecutionService executionService;
 
-    public JobController(JobService jobService, JobExecutionService jobExecutionService, ExecutionService executionService){
-        this.jobService=jobService;
+    public JobController(
+            JobService jobService,
+            JobExecutionService jobExecutionService,
+            ExecutionService executionService
+    ) {
+        this.jobService = jobService;
         this.jobExecutionService = jobExecutionService;
         this.executionService = executionService;
     }
 
+    // CREATE JOB
     @PostMapping
-    public ResponseEntity<Job> createJob(@Valid @RequestBody CreateJobRequest request){
-        Job job=jobService.createJob(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(job);
+    public ResponseEntity<Job> createJob(
+            @Valid @RequestBody CreateJobRequest request
+    ) {
+        Job job = jobService.createJob(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(job);
     }
+
+    // GET ALL JOBS
     @GetMapping
-    public ResponseEntity<List<Job>> getAllJobs(){
+    public ResponseEntity<List<Job>> getAllJobs() {
+
         return ResponseEntity.ok(
                 jobService.getAllJobs()
         );
     }
+
+    // GET ONE JOB
     @GetMapping("/{id}")
-    public ResponseEntity<Job> getJob(@PathVariable Long id){
+    public ResponseEntity<Job> getJob(
+            @PathVariable Long id
+    ) {
+
         return ResponseEntity.ok(
                 jobService.getJobById(id)
         );
     }
 
+    // UPDATE JOB METADATA
     @PutMapping("/{id}")
-    public ResponseEntity<Job> updateJob(@PathVariable Long id,@Valid @RequestBody UpdateJobRequest request){
+    public ResponseEntity<Job> updateJob(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateJobRequest request
+    ) {
+
         return ResponseEntity.ok(
-                jobService.updateJob(id,request)
+                jobService.updateJob(id, request)
         );
     }
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<Job> updateJobStatus(@PathVariable Long id, @Valid @RequestBody UpdateJobStatusRequest request){
-        return ResponseEntity.ok(
-                jobService.updateJobStatus(
-                        id,
-                        request.getStatus()
-                )
-        );
-    }
+    // DELETE JOB
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteJob(@PathVariable Long id){
+    public ResponseEntity<Void> deleteJob(
+            @PathVariable Long id
+    ) {
+
         jobService.deleteJob(id);
+
         return ResponseEntity.noContent().build();
     }
 
+    // REQUEST JOB EXECUTION
     @PostMapping("/{id}/run")
-    public ResponseEntity<Execution> runJob(@PathVariable Long id){
+    public ResponseEntity<Execution> runJob(
+            @PathVariable Long id
+    ) {
+
         return ResponseEntity.ok(
                 jobExecutionService.queueJob(id)
         );
     }
 
+    // GET EXECUTION HISTORY
     @GetMapping("/{id}/executions")
     public ResponseEntity<List<ExecutionResponse>> getExecutions(
-            @PathVariable Long id) {
+            @PathVariable Long id
+    ) {
 
         List<ExecutionResponse> response =
                 executionService.getExecutionsForJob(id)
@@ -100,9 +125,14 @@ public class JobController{
         return ResponseEntity.ok(response);
     }
 
+    // CANCEL QUEUED JOB
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<Void> cancelJob(@PathVariable Long id) {
+    public ResponseEntity<Void> cancelJob(
+            @PathVariable Long id
+    ) {
+
         jobExecutionService.cancelQueuedJob(id);
+
         return ResponseEntity.noContent().build();
     }
 }

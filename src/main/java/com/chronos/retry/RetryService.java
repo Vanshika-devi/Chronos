@@ -1,4 +1,3 @@
-
 package com.chronos.retry;
 
 import com.chronos.exception.JobNotFoundException;
@@ -37,7 +36,6 @@ public class RetryService {
             RetryPolicy retryPolicy,
             ExponentialBackoffPolicy backoffPolicy
     ) {
-
         this.jobRepository = jobRepository;
         this.executionRepository = executionRepository;
         this.jobQueue = jobQueue;
@@ -52,7 +50,8 @@ public class RetryService {
         Long jobId = failedJob.getJobId();
         Long executionId = failedJob.getExecutionId();
 
-        Job job = jobRepository.findById(jobId)
+        // Lock the job row to prevent concurrent retry decisions.
+        Job job = jobRepository.findByIdForUpdate(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
                                 "Job not found: " + jobId
@@ -63,38 +62,40 @@ public class RetryService {
                 executionRepository.findById(executionId)
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
-                                        "Execution not found: "
-                                                + executionId
+                                        "Execution not found: " + executionId
                                 )
                         );
 
+        // Ensure the execution belongs to this job.
         if (!failedExecution.getJob().getId().equals(jobId)) {
             throw new IllegalArgumentException(
                     "Execution does not belong to the specified job."
             );
         }
 
-        if (failedExecution.getStatus()
-                != ExecutionStatus.FAILED) {
-
+        // Only failed executions can be retried.
+        if (failedExecution.getStatus() != ExecutionStatus.FAILED) {
             throw new IllegalStateException(
                     "Only failed executions can be retried."
             );
         }
 
-        int currentAttempt =
-                failedExecution.getAttemptNumber();
+        // The job must also be in FAILED state.
+        if (job.getStatus() != JobStatus.FAILED) {
+            throw new IllegalStateException(
+                    "Only failed jobs can be retried. Current status: "
+                            + job.getStatus()
+            );
+        }
 
-        int maxAttempts =
-                job.getMaxAttempts();
+        int currentAttempt = failedExecution.getAttemptNumber();
+        int maxAttempts = job.getMaxAttempts();
 
-        if (!retryPolicy.shouldRetry(
-                currentAttempt,
-                maxAttempts
-        )) {
+        // Stop when the maximum number of attempts is reached.
+        if (!retryPolicy.shouldRetry(currentAttempt, maxAttempts)) {
 
-            job.setStatus(JobStatus.FAILED);
-            jobRepository.save(job);
+            // ExecutionService has already marked the job as FAILED.
+            // Do not attempt the invalid FAILED -> FAILED transition.
 
             System.out.println(
                     "Retry limit reached for Job " + jobId
@@ -120,11 +121,11 @@ public class RetryService {
         Execution savedExecution =
                 executionRepository.save(retryExecution);
 
-        job.setStatus(JobStatus.QUEUED);
+        // Transition the job from FAILED back to QUEUED.
+        job.transitionTo(JobStatus.QUEUED);
         jobRepository.save(job);
 
-        long sequenceNumber =
-                sequenceGenerator.next();
+        long sequenceNumber = sequenceGenerator.next();
 
         ScheduledJob scheduledRetry =
                 new ScheduledJob(
@@ -135,7 +136,8 @@ public class RetryService {
                         failedJob.getSchedulingGroup()
                 );
 
-        // Queue retry only after the transaction commits.
+        // Add the retry to the in-memory queue only after the
+        // database transaction successfully commits.
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
 

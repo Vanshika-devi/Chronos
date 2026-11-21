@@ -1,4 +1,3 @@
-
 package com.chronos.service;
 
 import java.util.List;
@@ -36,8 +35,8 @@ public class JobExecutionService {
             ExecutionRepository executionRepository,
             WorkerPool workerPool,
             JobQueue jobQueue,
-            SequenceGenerator sequenceGenerator) {
-
+            SequenceGenerator sequenceGenerator
+    ) {
         this.jobRepository = jobRepository;
         this.executionRepository = executionRepository;
         this.workerPool = workerPool;
@@ -45,28 +44,49 @@ public class JobExecutionService {
         this.sequenceGenerator = sequenceGenerator;
     }
 
+    /**
+     * Queues a job for its first execution.
+     */
     @Transactional
     public Execution queueJob(Long jobId) {
 
-        Job job = jobRepository.findById(jobId)
+        // STEP 1: Lock the job row.
+        Job job = jobRepository.findByIdForUpdate(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
                                 "Job not found: " + jobId
                         )
                 );
 
+        // STEP 2: Validate its current state.
+        if (job.getStatus() != JobStatus.CREATED) {
+
+            throw new IllegalStateException(
+                    "Only CREATED jobs can be queued. "
+                            + "Current status: "
+                            + job.getStatus()
+            );
+        }
+
+        // STEP 3: Move the job to QUEUED.
         job.setStatus(JobStatus.QUEUED);
+
         jobRepository.save(job);
 
+        // STEP 4: Create its first execution record.
         Execution execution = new Execution();
+
         execution.setJob(job);
         execution.setStatus(ExecutionStatus.QUEUED);
+        execution.setAttemptNumber(1);
         execution.setStartedAt(null);
         execution.setFinishedAt(null);
+        execution.setFailureReason(null);
 
         Execution savedExecution =
                 executionRepository.save(execution);
 
+        // STEP 5: Prepare the scheduler entry.
         long sequenceNumber = sequenceGenerator.next();
 
         ScheduledJob scheduledJob =
@@ -78,6 +98,8 @@ public class JobExecutionService {
                         "DEFAULT"
                 );
 
+        // STEP 6: Add it to the in-memory queue only
+        // after the database transaction commits.
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
 
@@ -87,14 +109,8 @@ public class JobExecutionService {
                         jobQueue.add(scheduledJob);
 
                         System.out.println(
-                                "Job "
-                                        + job.getId()
-                                        + " added to scheduler queue "
-                                        + "after transaction commit. "
-                                        + "Priority: "
-                                        + job.getPriority()
-                                        + ", Sequence: "
-                                        + sequenceNumber
+                                "Job " + job.getId()
+                                        + " added to scheduler queue."
                         );
                     }
                 }
@@ -103,6 +119,9 @@ public class JobExecutionService {
         return savedExecution;
     }
 
+    /**
+     * Dispatches a scheduled job to the worker pool.
+     */
     public void dispatchJob(ScheduledJob scheduledJob) {
 
         Long jobId = scheduledJob.getJobId();
@@ -117,7 +136,7 @@ public class JobExecutionService {
 
         executionRepository.findById(executionId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new IllegalArgumentException(
                                 "Execution not found: " + executionId
                         )
                 );
@@ -125,10 +144,13 @@ public class JobExecutionService {
         workerPool.submit(scheduledJob);
     }
 
+    /**
+     * Cancels a job that is still waiting in the queue.
+     */
     @Transactional
     public void cancelQueuedJob(Long jobId) {
 
-        // Acquire database write lock before checking job status.
+        // Always lock the job first.
         Job job = jobRepository.findByIdForUpdate(jobId)
                 .orElseThrow(() ->
                         new JobNotFoundException(
@@ -137,6 +159,7 @@ public class JobExecutionService {
                 );
 
         if (job.getStatus() != JobStatus.QUEUED) {
+
             throw new IllegalStateException(
                     "Only queued jobs can be cancelled."
             );
@@ -147,13 +170,15 @@ public class JobExecutionService {
 
         Execution queuedExecution = executions.stream()
                 .filter(execution ->
-                        execution.getStatus() == ExecutionStatus.QUEUED)
+                        execution.getStatus()
+                                == ExecutionStatus.QUEUED
+                )
                 .max(Comparator.comparingInt(
                         Execution::getAttemptNumber
                 ))
                 .orElseThrow(() ->
                         new IllegalStateException(
-                                "No queued execution found for this job."
+                                "No queued execution found."
                         )
                 );
 
@@ -167,6 +192,7 @@ public class JobExecutionService {
 
         Long executionId = queuedExecution.getId();
 
+        // Remove from memory only after commit.
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
 

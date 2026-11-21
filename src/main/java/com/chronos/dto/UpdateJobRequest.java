@@ -1,11 +1,9 @@
-package  com.chronos.dto;
+package com.chronos.dto;
 
-import com.chronos.model.JobStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
-public class UpdateJobRequest{
+public class UpdateJobRequest {
 
     @NotBlank
     private String name;
@@ -13,27 +11,22 @@ public class UpdateJobRequest{
     @Min(1)
     private int priority;
 
-    @NotNull
-    private JobStatus status;
-    public UpdateJobRequest(){
-
+    public UpdateJobRequest() {
     }
-    public String getName(){
+
+    public String getName() {
         return name;
     }
-    public void setName(String name){
-        this.name=name;
+
+    public void setName(String name) {
+        this.name = name;
     }
-    public int getPriority(){
+
+    public int getPriority() {
         return priority;
     }
-    public void setPriority(int priority){
-        this.priority=priority;
-    }
-    public JobStatus getStatus(){
-        return status;
-    }
-    public void setStatus(JobStatus status){
-        this.status=status;
+
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 }
